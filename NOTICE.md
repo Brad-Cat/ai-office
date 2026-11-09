@@ -13,6 +13,10 @@ AI Office still runs terminals and agents through
 - An office layout (`defaults/layouts/office.json`, `defaults/mods/office`,
   `defaults/mods/office-hire`): each agent is a person at a desk; working,
   needs-you, done and idle are shown as what they do. It is the first screen.
+- Nine looks for the office people (three hairstyles and six animals), picked
+  when hiring, from the right-click menu or from the work pane's header
+  (`defaults/mods/office-look`, art from `scripts/office-art.py`). An agent that
+  ends its turn with a question raises its hand instead of walking over.
 - A button in Herdr's sidebar footer (`defaults/mods/workspace-chrome`) and in
   the office header to switch between the two screens.
 - Its own home folder, `~/.config/ai-office` (`src/mods.rs`), so it never

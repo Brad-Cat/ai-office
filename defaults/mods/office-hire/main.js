@@ -1,7 +1,10 @@
-// 新增員工：填職稱、選 AI、選坐哪一區，按「請他上工」就開一個新的 AI 分頁。
+// 新增員工：填職稱、選 AI、選造型、選坐哪一區，按「請他上工」就開一個新的 AI 分頁。
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
-import { run, props, closeOverlay, theme, spaces, knownAgents } from "herdr";
+import { run, props, closeOverlay, theme, spaces, knownAgents, setShared } from "herdr";
+
+const LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
+const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸" };
 
 export default class Hire extends View {
   init(_props, cx) {
@@ -10,6 +13,7 @@ export default class Hire extends View {
     this.agents = [];
     this.agent = null;
     this.loading = true;
+    this.look = LOOKS[Math.floor(Math.random() * LOOKS.length)];
     this.title = InputState.new({ value: "" });
     this.task = InputState.new({ value: "" });
     this.focusOn = "title";
@@ -34,6 +38,8 @@ export default class Hire extends View {
     if (!name || !this.agent || !this.space) return;
     const task = this.task.value().trim();
     closeOverlay(props().overlay);
+    // 辦公室畫面等新分頁出現後，把這個造型記到它身上。
+    setShared("office.pendingLook", { space: this.space, name, look: this.look, at: Date.now() });
     run("tab.new", { space: this.space, name, argv: this.agent.run, ...(task ? { task } : {}) });
   }
 
@@ -67,6 +73,13 @@ export default class Hire extends View {
         .children(this.agents.map((a) => choice(`ai-${a.key}`, this.agent === a, h_flex().gap(6).items_center().child(agentIcon(a)).child(a.name), () => { this.agent = a; })))
         .when(this.agents.length === 0, (el) => el.child(div().text_size(12).text_color(t.dim)
           .child(this.loading ? "正在檢查這台電腦裝了哪些 AI…" : "這台電腦還沒有安裝 Claude Code 或 Codex"))))
+      .child(label("造型"))
+      .child(h_flex().gap(6).flex_wrap()
+        .children(LOOKS.map((look) => v_flex().id(`look-${look}`).w(46).h(52).items_center().justify_center().rounded(8).cursor_pointer()
+          .border_1().border_color(this.look === look ? t.accent : t.input).bg(this.look === look ? t.selected : t.raised)
+          .hover((s) => s.opacity(0.88)).on_click((_e, cx) => { this.look = look; cx.notify(); })
+          .child(image(`mods/office/head-${look}-smile.svg`).size(30))
+          .child(div().text_size(10).text_color(t.dim).child(LOOK_NAME[look])))))
       .child(label("坐在哪一區"))
       .child(h_flex().gap(8).flex_wrap()
         .children(spaces().filter((s) => !s.machine).map((s) => choice(`zone-${s.id}`, this.space === s.id, s.name, () => { this.space = s.id; }))))
