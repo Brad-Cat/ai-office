@@ -142,12 +142,13 @@ export default class Office extends View {
     return { zones, seats };
   }
 
-  // 你的辦公桌前的位置：交差的人在這裡排隊等你。
+  // 你的辦公桌前的位置：交差的人在這裡排隊等你，一排四人，後面的往上退。
   slot(k) {
     const W = this.size.width, H = this.size.height;
     const bx = W - BOSS_W + 14, deskTop = H - 118;
-    const row = Math.floor(k / 3), col = k % 3;
-    return { x: bx + 44 + col * 56 + row * 28, y: deskTop - 30 - row * 22 };
+    const rows = Math.max(1, Math.floor((deskTop - 30 - (TOP + 34)) / 34) + 1);
+    const row = Math.min(Math.floor(k / 4), rows - 1), col = k % 4;
+    return { x: bx + 22 + col * 46 + (row % 2) * 20, y: deskTop - 30 - row * 34 };
   }
 
   person(a, seat, k, now) {
@@ -165,11 +166,12 @@ export default class Office extends View {
         : image(`${ART}head-${look}-${mood}.svg`).absolute().left(20).top(5).size(40));
     if (walking) body.loop("top", { from: 0, to: -3, period: 380 });
     let bubble = null;
-    if (atBoss && !walking) bubble = pill("報告好了", "#EAF7EF", C.green, "#8CCBA6");
+    // 只有一個人交差時才冒泡泡；人多時看上方的「N 份報告等你看」。
+    if (atBoss && !walking) bubble = this.doneCount === 1 ? pill("報告好了", "#EAF7EF", C.green, "#8CCBA6") : null;
     else if (st === "ask") bubble = pill(a.status === "blocked" ? "需要你！" : "有事問你", "#FFF1E4", C.orange, "#F0A46C");
     else if (st === "work" && !walking) bubble = div().w(34).h(20).rounded(10).bg("#FFFFFF").border(2).border_color("#D9CDBB")
       .flex().items_center().justify_center().text_size(13).font_weight(800).text_color(C.muted).frames(["·", "··", "···"], 420);
-    const lift = atBoss ? 24 + (k % 2) * 22 : 20;
+    const lift = atBoss ? 24 : 20;
     const beside = st === "work" && !standing;
     const tag = !bubble ? null : beside
       ? div().id(`tag-${a.address}`).absolute().top(6).left(60).child(bubble)
@@ -260,7 +262,9 @@ export default class Office extends View {
     setAgentOrder(order.map((a) => a.address));
     const done = order.filter((a) => this.state(a) === "report");
     const seated = order.filter((a) => this.state(a) !== "report" && !((this.walkUntil[a.address] ?? 0) > now));
-    const moving = order.filter((a) => !seated.includes(a));
+    // 後排先畫，前排的人擋在前面。
+    const moving = order.filter((a) => !seated.includes(a)).sort((a, b) => done.indexOf(b) - done.indexOf(a));
+    this.doneCount = done.length;
 
     return div().id("office").relative().size_full().overflow_hidden().bg(C.floor)
       .on_size_change((size, cx) => { this.size = size; cx.notify(); })

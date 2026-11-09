@@ -285,7 +285,7 @@ export default class Welcome extends View {
   pageOne(t) {
     return v_flex()
       .gap(18)
-      .child(this.title(t, "AI Office runs your terminals in the background", "The terminals and agents you open here don't live in this window. They run in herdr-core, a small background program on your computer. Close Herdr, update it, or let it crash, and your agents keep working. Open it again and everything is where you left it, as long as the computer is on."))
+      .child(this.title(t, "AI Office runs your terminals in the background", "The terminals and agents you open here don't live in this window. They run in herdr-core, a small background program on your computer. Close AI Office, update it, or let it crash, and your agents keep working. Open it again and everything is where you left it, as long as the computer is on."))
       .child(this.feature(t, "bot", "Agents tell you when they need you", "A ring while one works, \u201cNeeds you\u201d when it asks something, a sound when it finishes."))
       .child(this.feature(t, "messages", "Agents can start helpers", "They show up under the agent that started them. Click one to watch it."))
       .child(this.feature(t, "layers", "Your other machines, in the same window", "A server or a Mac mini runs its own herdr-core, so its agents keep going even while this laptop sleeps."))
@@ -453,7 +453,7 @@ export default class Welcome extends View {
           .rounded(10)
           .bg(t.raised)
           .child(div().text_size(13.5).font_semibold().text_color(t.foreground).child("More examples in Settings"))
-          .child(this.para(t, "Settings \u203a Look has more layouts to try or start from, Herdr 98 among them. Your agent can copy any of them and change anything.")),
+          .child(this.para(t, "Settings \u203a Look has more layouts to try or start from, Office 98 among them. Your agent can copy any of them and change anything.")),
       )
       .child(this.para(t, "Something off or missing? Settings \u203a Send feedback. We read every one."));
   }

@@ -1,4 +1,4 @@
-// Herdr 98's drawing kit: Windows 98 colors, bevels, buttons, title bars,
+// Office 98's drawing kit: Windows 98 colors, bevels, buttons, title bars,
 // menus' bits and sounds, shared by every role of the win98 mod.
 //
 // Pixels: Win98 is drawn in whole device pixels. `unit()` gives u(n): n Win98
@@ -403,7 +403,7 @@ export { closeOverlay };
 
 // ---- sounds
 
-/** Plays a Herdr 98 sound unless sounds are off (settings, or the speaker in the tray). */
+/** Plays a Office 98 sound unless sounds are off (settings, or the speaker in the tray). */
 export function sfx(name) {
   if (settings()?.sounds?.enabled === false) return;
   if (shared("win98.mute") === true) return;
