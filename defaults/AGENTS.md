@@ -667,7 +667,7 @@ What's about the user, never a look:
   When an agent needs the person, or finishes while they aren't looking at
   it, Herdr plays a sound and (unless they're looking) posts a toast that
   goes there when clicked. `done` / `blocked` replace the bundled MP3s
-  (path absolute or relative to `~/.config/herdr-app`). Changes apply live,
+  (path absolute or relative to `~/.config/ai-office`). Changes apply live,
   including the Play buttons in Settings > Alerts.
 - `core`: the herdr-core binary to use, when it isn't where Herdr looks
   (PATH, the login shell's PATH, `~/.local/bin`, Homebrew, mise, Nix,
@@ -796,7 +796,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
 ## Mods: `mods/<name>/`
 
 ```
-~/.config/herdr-app/mods/<name>/
+~/.config/ai-office/mods/<name>/
   main.js       the mod (required)
   mod.json    where it first appears: { "place": "right" | "left" | "top" | "bottom" | "none", "size": 320 }
   *.js, *.svg   more modules ("./ui.js"), its own icons
@@ -822,7 +822,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
   timers keep running while hidden, so poll gently. Another layout starts its
   mods fresh (pane mods belong to their tab and stay); a block removed or given
   another mod or props starts over. `<mod>.<command>` reaches shown copies only.
-- Images and SVGs are referenced from `~/.config/herdr-app`:
+- Images and SVGs are referenced from `~/.config/ai-office`:
   `image("mods/<name>/logo.svg")` (full color), `svg("mods/<name>/icon.svg")`
   (tinted with the text color). Saving an asset under `mods/` updates every
   mod showing it, including images that were missing or invalid on first load.
@@ -845,7 +845,7 @@ has 120 programs (agents, editors, runtimes, tools, databases, infra);
 ### Check before you finish
 
 ```sh
-herdr-app check ~/.config/herdr-app/mods/<name>
+herdr-app check ~/.config/ai-office/mods/<name>
 ```
 
 Loads the mod, renders it once, exits nonzero with the exact error. Run it
@@ -1026,7 +1026,7 @@ All of it is in `herdr.d.ts`. In short:
 
 Mods are trusted code: commands and network access (including `fetch`) are unrestricted.
 Other built-ins: `localStorage` (per mod copy), `console.log`, `fetch`,
-`import * as fs from "fs/promises"` (read in home, write under `~/.config/herdr-app`).
+`import * as fs from "fs/promises"` (read in home, write under `~/.config/ai-office`).
 
 ## herdr-core (`hc`)
 

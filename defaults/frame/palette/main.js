@@ -1,3 +1,4 @@
+// Modified by AI Office (Brad-Cat/ai-office): AI Office name in visible text.
 // The frame's command palette: everything you can do, by name, with its key.
 // Places (spaces, tabs) stay in the picker. Fuzzy: your letters in
 // order, word starts and runs rank higher. Empty: recent first, then every
@@ -58,7 +59,7 @@ const NAMED = [
   ["app.zoom_in", {}, "App", "Zoom in", "bigger font size"],
   ["app.zoom_out", {}, "App", "Zoom out", "smaller font size"],
   ["app.zoom_reset", {}, "App", "Reset zoom", "font size"],
-  ["app.quit", {}, "App", "Quit Herdr", "exit"],
+  ["app.quit", {}, "App", "Quit AI Office", "exit"],
   ...["graphite", "ink", "moss", "atom-one-dark"].map((n) => ["app.theme", { name: n }, "App", `Theme: ${n.replace(/-/g, " ")}`, "colors look"]),
 ];
 
@@ -84,7 +85,7 @@ function entries() {
     .filter(([n]) => !(mac && n.startsWith("window.")))
     .map(([name, args, group, title, words]) => ({ name, args, group, title, words }));
   for (const l of layouts()) {
-    const t = { main: "Herdr", terminals: "Terminals", win98: "Herdr 98" }[l] ?? l.charAt(0).toUpperCase() + l.slice(1);
+    const t = { office: "辦公室", main: "Classic", terminals: "Terminals", win98: "Herdr 98" }[l] ?? l.charAt(0).toUpperCase() + l.slice(1);
     list.push({ name: "layout.switch", args: { name: l }, group: "Layout", title: `Layout: ${t}`, words: `look ${l}` });
   }
   // Anything new in the app shows up too, until it gets a better name here.

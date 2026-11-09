@@ -1,3 +1,4 @@
+// Modified by AI Office (Brad-Cat/ai-office): AI Office name in visible text.
 // App-owned settings mod. Writes changes immediately; no Save step.
 
 import { View, div, svg, image } from "gpui-kit";
@@ -15,7 +16,7 @@ const SECTIONS = [
   { id: "privacy", title: "Privacy", icon: "shield" },
 ];
 
-const LOOKS = { main: "Herdr", terminals: "Terminals", win98: "Herdr 98" };
+const LOOKS = { office: "辦公室", main: "Classic", terminals: "Terminals", win98: "Herdr 98" };
 const APPEARANCES = [
   [null, "System"],
   ["light", "Light"],
@@ -739,8 +740,8 @@ export default class Settings extends View {
               : ["Not checked: a build from source looks for no updates.", null];
     return v_flex()
       .w_full()
-      .child(this.heading(t, "Herdr"))
-      .child(this.row(t, `Herdr ${u.app.version}`, app[0], h_flex().gap(8).flex_none()
+      .child(this.heading(t, "AI Office"))
+      .child(this.row(t, `AI Office ${u.app.version}`, app[0], h_flex().gap(8).flex_none()
         .child(this.button(t, "st-whats-new", "What's new", () => { closeOverlay(props()?.overlay); run("app.whats_new"); }))
         .when(Boolean(app[1]), (el) => el.child(app[1]))))
       .child(div().h(18))
