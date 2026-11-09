@@ -16,8 +16,14 @@ env:
 
 jobs:
   build:
-    runs-on: macos-15
-    timeout-minutes: 90
+    # Apple silicon runners are often short on capacity; the Intel build runs on
+    # Apple silicon Macs too (through Rosetta), so both are tried.
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,12 +43,12 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: ai-office-mac-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-${{ hashFiles('Cargo.lock', 'vendor/**', 'crates/**') }}
-          restore-keys: ai-office-mac-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-
+          key: ai-office-${{ matrix.runner }}-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-${{ hashFiles('Cargo.lock', 'vendor/**', 'crates/**') }}
+          restore-keys: ai-office-${{ matrix.runner }}-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-
       - name: Build and pack
         run: scripts/package-ai-office
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: AI-Office-macos
+          name: AI-Office-${{ matrix.runner }}
           path: dist/AI-Office-macos-*.zip
           retention-days: 30
