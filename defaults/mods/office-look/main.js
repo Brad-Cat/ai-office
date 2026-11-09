@@ -1,17 +1,18 @@
-// 換造型：九種人物和動物，點一下就換；造型存在 shared("office.looks")，以分頁為單位。
+// 換造型：21 種人物和動物，點一下就換；造型存在 shared("office.looks")，以分頁為單位。
 import { View, div, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { props, closeOverlay, theme, shared, setShared } from "herdr";
 
-const LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
-const NAME = { short: "短髮", long: "長髮", bun: "包頭", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸" };
+const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
+const DEFAULT_LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
+const NAME = { short: "短髮", long: "長髮", bun: "包頭", curly: "捲髮", bob: "鮑伯頭", ponytail: "馬尾", beard: "大鬍子", glasses: "眼鏡", cap: "棒球帽", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸", tiger: "老虎", lion: "獅子", koala: "無尾熊", penguin: "企鵝", monkey: "猴子", frog: "青蛙" };
 
 function current(tab) {
   const picked = shared("office.looks")?.[tab];
   if (LOOKS.includes(picked)) return picked;
   let h = 0;
   for (const ch of String(tab ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return LOOKS[h % LOOKS.length];
+  return DEFAULT_LOOKS[h % DEFAULT_LOOKS.length];
 }
 
 export default class Look extends View {
@@ -27,12 +28,12 @@ export default class Look extends View {
       setShared("office.looks", { ...(shared("office.looks") ?? {}), [p.tab]: look });
       closeOverlay(p.overlay);
     };
-    const tile = (look) => v_flex().id(`look-${look}`).w(88).h(92).items_center().justify_center().gap(4).rounded(10).cursor_pointer()
+    const tile = (look) => v_flex().id(`look-${look}`).w(64).h(74).items_center().justify_center().gap(3).rounded(9).cursor_pointer()
       .border_1().border_color(look === now ? t.accent : t.border).bg(look === now ? t.selected : t.raised)
       .hover((s) => s.bg(t.hover)).on_click(() => pick(look))
-      .child(image(`mods/office/head-${look}-smile.svg`).size(52))
-      .child(div().text_size(12).text_color(t.foreground).child(NAME[look]));
-    const rows = [0, 3, 6].map((i) => h_flex().gap(8).children(LOOKS.slice(i, i + 3).map(tile)));
+      .child(image(`mods/office/head-${look}-smile.svg`).size(42))
+      .child(div().text_size(11).text_color(t.foreground).child(NAME[look]));
+    const rows = [0, 7, 14].map((i) => h_flex().gap(6).children(LOOKS.slice(i, i + 7).map(tile)));
     return v_flex().id("office-look").track_focus(this.handle)
       .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(p.overlay); cx.stop_propagation(); } })
       .w_full().p(14).gap(8).bg(t.popover).text_color(t.foreground)

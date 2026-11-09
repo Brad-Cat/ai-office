@@ -14,8 +14,10 @@ const C = {
 };
 const SEAT_W = 120, SEAT_H = 130, PAD = 12, ZONE_HEAD = 44, GAP = 14, TOP = 66, BOSS_W = 250, WALK_MS = 2400;
 const WORD = { work: "工作中", ask: "要你回答", report: "報告好了", rest: "休息中" };
-export const LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
-export const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸" };
+export const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
+// 沒選過造型的員工從原本這九種裡固定挑一個，加新造型時大家不會突然換臉。
+const DEFAULT_LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
+export const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", curly: "捲髮", bob: "鮑伯頭", ponytail: "馬尾", beard: "大鬍子", glasses: "眼鏡", cap: "棒球帽", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸", tiger: "老虎", lion: "獅子", koala: "無尾熊", penguin: "企鵝", monkey: "猴子", frog: "青蛙" };
 
 // 衣服顏色看是哪家 AI：橘色 Claude、藍色 Codex。
 function shirt(a) {
@@ -29,11 +31,11 @@ export function lookOf(tab) {
   if (LOOKS.includes(picked)) return picked;
   let h = 0;
   for (const ch of String(tab ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return LOOKS[h % LOOKS.length];
+  return DEFAULT_LOOKS[h % DEFAULT_LOOKS.length];
 }
 
 export function openLook(tab, name) {
-  openOverlay({ mod: "office-look", kind: "popup", width: 316, height: 352, props: { tab, name } });
+  openOverlay({ mod: "office-look", kind: "popup", width: 520, height: 300, props: { tab, name } });
 }
 
 // 最後一段在問你問題嗎？（AI 用文字問完就停下時，Herdr 只會回報「做完了」）
@@ -83,18 +85,23 @@ export default class Office extends View {
       }
       if (redraw) cx.notify();
     });
-    // 讓快捷鍵或指令列也能開「新增員工」：herdr-app do office.hire
+    // 讓快捷鍵或指令列也能開：herdr-app do office.hire（新增員工）、office.look（幫目前的員工換造型）
     cx.spawn(async (cx) => {
       for (;;) {
         const c = await nextCommand();
         if (c === "hire") this.hire(spaces().find((s) => s.active)?.id);
+        if (c === "look") {
+          const pane = panes().find((x) => x.focused);
+          const tab = spaces().flatMap((s) => s.tabs).find((t) => t.id === pane?.tab);
+          if (tab) openLook(tab.id, tab.name);
+        }
         cx.notify();
       }
     });
   }
 
   hire(space) {
-    openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 500, props: { space } });
+    openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 610, props: { space } });
   }
 
   // 這位員工現在該怎麼表現：work / ask / report / rest；還沒讀完畫面的先坐著（wait）。

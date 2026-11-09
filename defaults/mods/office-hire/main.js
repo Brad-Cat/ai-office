@@ -3,8 +3,8 @@ import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { run, props, closeOverlay, theme, spaces, knownAgents, setShared } from "herdr";
 
-const LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
-const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸" };
+const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
+const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", curly: "捲髮", bob: "鮑伯頭", ponytail: "馬尾", beard: "大鬍子", glasses: "眼鏡", cap: "棒球帽", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸", tiger: "老虎", lion: "獅子", koala: "無尾熊", penguin: "企鵝", monkey: "猴子", frog: "青蛙" };
 
 export default class Hire extends View {
   init(_props, cx) {
@@ -75,7 +75,7 @@ export default class Hire extends View {
           .child(this.loading ? "正在檢查這台電腦裝了哪些 AI…" : "這台電腦還沒有安裝 Claude Code 或 Codex"))))
       .child(label("造型"))
       .child(h_flex().gap(6).flex_wrap()
-        .children(LOOKS.map((look) => v_flex().id(`look-${look}`).w(46).h(52).items_center().justify_center().rounded(8).cursor_pointer()
+        .children(LOOKS.map((look) => v_flex().id(`look-${look}`).w(62).h(52).items_center().justify_center().rounded(8).cursor_pointer()
           .border_1().border_color(this.look === look ? t.accent : t.input).bg(this.look === look ? t.selected : t.raised)
           .hover((s) => s.opacity(0.88)).on_click((_e, cx) => { this.look = look; cx.notify(); })
           .child(image(`mods/office/head-${look}-smile.svg`).size(30))
