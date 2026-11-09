@@ -16,14 +16,15 @@ env:
 
 jobs:
   build:
-    # Apple silicon runners are often short on capacity; the Intel build runs on
-    # Apple silicon Macs too (through Rosetta), so both are tried.
+    # Apple silicon only (Herdr ships no Intel Mac build; on the Intel runner the
+    # Zig build of libghostty-vt ran past two hours). macos-15 has often had no
+    # free runner, so three images are tried and the first artifact is used.
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15, macos-15-intel]
+        runner: [macos-14, macos-15, macos-26]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 120
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
