@@ -1,7 +1,9 @@
 // 辦公室：每個 AI 是一位坐在座位上的員工。
-// 工作中在打字；要你回答時舉手（卡住等你，或做完時最後在問你問題）；
-// 做完交差時走到你的辦公桌前等你看報告；閒置時靠著椅背休息。
-// 點員工打開他的工作畫面（下方的終端機）；右鍵或工作畫面標頭的「換造型」可以換人物或動物。
+// 工作中在打字；卡住等你時舉手；閒置時靠著椅背休息。
+// 有總經理時：員工做完走到總經理桌前排隊，總經理收了（herdr.seen）就回座位；
+// 總經理做完拿報告走到你的辦公桌前，要你決定時在座位上舉手。
+// 沒有總經理時：員工做完直接走到你的辦公桌前，最後在問你問題的就舉手。
+// 點員工打開他的工作畫面（下方的終端機）；右鍵或工作畫面標頭的「換造型」可以換人物或動物、設總經理。
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, spaces, panes, props, run, setAgentOrder, openOverlay, nextCommand, layouts, shared, setShared, hc } from "herdr";
@@ -13,7 +15,8 @@ const C = {
   cream: "#FFF9EE", orange: "#E07B39", green: "#3E9B6A",
 };
 const SEAT_W = 120, SEAT_H = 130, PAD = 12, ZONE_HEAD = 44, GAP = 14, TOP = 66, BOSS_W = 250, WALK_MS = 2400;
-const WORD = { work: "工作中", ask: "要你回答", report: "報告好了", rest: "休息中" };
+const WORD = { work: "工作中", ask: "要你回答", report: "報告好了", toGM: "交給總經理", rest: "休息中" };
+const GM_NAME = /^(g\.?\s*m\.?|總經理)$/i;
 export const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
 // 沒選過造型的員工從原本這九種裡固定挑一個，加新造型時大家不會突然換臉。
 const DEFAULT_LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
@@ -32,6 +35,13 @@ export function lookOf(tab) {
   let h = 0;
   for (const ch of String(tab ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return DEFAULT_LOOKS[h % DEFAULT_LOOKS.length];
+}
+
+// 總經理：右鍵設定的那位；沒設定就找名稱叫 G.M.／GM／總經理 的分頁。設成 "none" 就是不要總經理。
+export function findGM(list) {
+  const picked = shared("office.gm");
+  if (picked === "none") return null;
+  return list.find((a) => a.tab && a.tab === picked) ?? list.find((a) => GM_NAME.test((a.tab_name ?? "").trim())) ?? null;
 }
 
 export function openLook(tab, name) {
@@ -64,7 +74,7 @@ function pill(text, bg, fg, border) {
 export default class Office extends View {
   init(_props, cx) {
     this.size = { width: 1200, height: 430 };
-    this.atBoss = {};
+    this.placeAt = {};
     this.walkUntil = {};
     this.asks = {};
     this.reading = {};
@@ -75,6 +85,7 @@ export default class Office extends View {
       // 剛做完的員工：讀他畫面的最後一段，看是在交差還是在問你。
       for (const a of agents()) {
         if (a.status !== "done" || a.address in this.asks || this.reading[a.address]) continue;
+        if (this.gm && a.address !== this.gm.address) continue;
         this.reading[a.address] = true;
         cx.spawn(async (cx) => {
           try { const r = await hc(["read", a.address, "--lines", "60"]); this.asks[a.address] = asksYou(r.stdout); }
@@ -104,12 +115,20 @@ export default class Office extends View {
     openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 610, props: { space } });
   }
 
-  // 這位員工現在該怎麼表現：work / ask / report / rest；還沒讀完畫面的先坐著（wait）。
+  // 這位員工現在該怎麼表現：work / ask / report / toGM / rest；還沒讀完畫面的先坐著（wait）。
   state(a) {
     if (a.status === "working") return "work";
     if (a.status === "blocked") return "ask";
-    if (a.status === "done") return a.address in this.asks ? (this.asks[a.address] ? "ask" : "report") : "wait";
-    return "rest";
+    if (a.status !== "done") return "rest";
+    // 有總經理時，員工做完一律交給總經理；總經理讀完會把它標成看過，員工就回座位。
+    if (this.gm && a.address !== this.gm.address) return "toGM";
+    return a.address in this.asks ? (this.asks[a.address] ? "ask" : "report") : "wait";
+  }
+
+  // 該站在哪裡：自己的座位 seat、總經理桌前 gm、你的辦公桌前 boss。
+  placeOf(a) {
+    const st = this.state(a);
+    return st === "report" ? "boss" : st === "toGM" ? "gm" : "seat";
   }
 
   // 排座位：一個空間一區，一位員工一張桌子，放不下就換行。
@@ -151,12 +170,30 @@ export default class Office extends View {
     return { x: bx + 22 + col * 46 + (row % 2) * 20, y: deskTop - 30 - row * 34 };
   }
 
+  // 總經理的桌子在右邊上方，你的辦公桌在右下。
+  gmDeskPos() {
+    return { x: this.size.width - BOSS_W + 14, y: TOP + 58 };
+  }
+
+  gmSeat() {
+    const d = this.gmDeskPos();
+    return { x: d.x + 90, y: d.y - 56 };
+  }
+
+  // 總經理桌前排隊：站在桌子左半邊後面，一排三人、最多兩排，再多就疊在後排。
+  gmSlot(k) {
+    const d = this.gmDeskPos();
+    const row = Math.min(Math.floor(k / 3), 1), col = k % 3;
+    return { x: d.x + 2 + col * 34 + row * 17, y: d.y - 30 - row * 26 };
+  }
+
   person(a, seat, k, now) {
-    const st = this.state(a), color = shirt(a), look = lookOf(a.tab ?? a.address);
+    const st = this.state(a), place = this.placeOf(a), color = shirt(a), look = lookOf(a.tab ?? a.address);
     const walking = (this.walkUntil[a.address] ?? 0) > now;
-    const atBoss = st === "report";
-    const standing = atBoss || walking;
-    const spot = atBoss ? this.slot(k) : standing ? { x: seat.x + 36, y: seat.y + 2 } : { x: seat.x + 20, y: seat.y + 8 };
+    const queued = place !== "seat";
+    const standing = queued || walking;
+    const spot = place === "boss" ? this.slot(k) : place === "gm" ? this.gmSlot(k)
+      : standing ? { x: seat.x + 36, y: seat.y + 2 } : { x: seat.x + 20, y: seat.y + 8 };
     const pose = standing ? "stand" : st === "ask" ? "raise" : st === "work" ? "work" : "rest";
     const mood = pose === "raise" ? "call" : pose === "rest" ? "sleep" : "smile";
     const body = div().id(`body-${a.address}`).relative().w(standing ? 48 : 80).h(80)
@@ -167,11 +204,11 @@ export default class Office extends View {
     if (walking) body.loop("top", { from: 0, to: -3, period: 380 });
     let bubble = null;
     // 只有一個人交差時才冒泡泡；人多時看上方的「N 份報告等你看」。
-    if (atBoss && !walking) bubble = this.doneCount === 1 ? pill("報告好了", "#EAF7EF", C.green, "#8CCBA6") : null;
-    else if (st === "ask") bubble = pill(a.status === "blocked" ? "需要你！" : "有事問你", "#FFF1E4", C.orange, "#F0A46C");
+    if (place === "boss" && !walking) bubble = this.doneCount === 1 ? pill("報告好了", "#EAF7EF", C.green, "#8CCBA6") : null;
+    else if (st === "ask") bubble = pill(a.status === "blocked" ? "需要你！" : a === this.gm ? "要你決定" : "有事問你", "#FFF1E4", C.orange, "#F0A46C");
     else if (st === "work" && !walking) bubble = div().w(34).h(20).rounded(10).bg("#FFFFFF").border(2).border_color("#D9CDBB")
       .flex().items_center().justify_center().text_size(13).font_weight(800).text_color(C.muted).frames(["·", "··", "···"], 420);
-    const lift = atBoss ? 24 : 20;
+    const lift = queued ? 24 : 20;
     const beside = st === "work" && !standing;
     const tag = !bubble ? null : beside
       ? div().id(`tag-${a.address}`).absolute().top(6).left(60).child(bubble)
@@ -198,6 +235,18 @@ export default class Office extends View {
       .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openLook(a.tab ?? a.address, a.tab_name); });
   }
 
+  gmDesk(a) {
+    const d = this.gmDeskPos();
+    const name = (a.tab_name ?? "").trim();
+    return div().id("gm-desk").absolute().left(d.x).top(d.y).w(200).h(70).cursor_pointer()
+      .child(image(`${ART}gm-desk.svg`).w(200).h(70))
+      .child(div().absolute().left(142).top(6).child(icon(a.program, 16)))
+      .child(div().absolute().left(45).top(42).w(110).h(18).flex().items_center().justify_center()
+        .text_size(11).font_weight(700).text_color(C.plate).truncate().child(!name || GM_NAME.test(name) ? "總經理" : `總經理・${name}`))
+      .on_click(() => run("agent.focus", { terminal: a.address }))
+      .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openLook(a.tab ?? a.address, a.tab_name); });
+  }
+
   header(list) {
     const count = (st) => list.filter((a) => this.state(a) === st).length;
     const chip = (st, color) => h_flex().gap(5).items_center()
@@ -207,7 +256,9 @@ export default class Office extends View {
       .child(div().text_size(12.5).text_color(C.muted).child(`${list.length} 位員工`))
       .child(div().flex_1())
       .child(h_flex().gap(14).text_size(12).text_color(C.ink)
-        .child(chip("work", "#5B8DEF")).child(chip("ask", C.orange)).child(chip("report", C.green)).child(chip("rest", "#A99C8C")))
+        .child(chip("work", "#5B8DEF")).child(chip("ask", C.orange))
+        .when(Boolean(this.gm), (el) => el.child(chip("toGM", "#C9A227")))
+        .child(chip("report", C.green)).child(chip("rest", "#A99C8C")))
       .child(div().id("to-classic").px(12).py(6).rounded(8).border(1).border_color(C.rugLine).bg(C.cream)
         .text_color(C.plate).text_size(12.5).font_weight(600).cursor_pointer().hover((s) => s.bg("#FFFFFF"))
         .on_click(() => run("layout.switch", { name: layouts().includes("classic") ? "classic" : "main" })).child("原本畫面"))
@@ -250,21 +301,29 @@ export default class Office extends View {
 
     const now = Date.now();
     const list = agents();
+    const gm = this.gm = findGM(list);
     this.claimLooks(list);
     for (const a of list) {
       if (a.status !== "done") delete this.asks[a.address];
-      const boss = this.state(a) === "report";
-      if (a.address in this.atBoss && this.atBoss[a.address] !== boss) this.walkUntil[a.address] = now + WALK_MS;
-      this.atBoss[a.address] = boss;
+      const place = this.placeOf(a);
+      if (a.address in this.placeAt && this.placeAt[a.address] !== place) this.walkUntil[a.address] = now + WALK_MS;
+      this.placeAt[a.address] = place;
     }
-    const { zones, seats } = this.plan(list);
-    const order = zones.flatMap((z) => list.filter((a) => a.space === z.id));
+    // 總經理不坐在分區裡，坐右上的總經理桌。
+    const staff = list.filter((a) => a !== gm);
+    const { zones, seats } = this.plan(staff);
+    if (gm) seats[gm.address] = this.gmSeat();
+    const order = [...(gm ? [gm] : []), ...zones.flatMap((z) => staff.filter((a) => a.space === z.id))];
     setAgentOrder(order.map((a) => a.address));
-    const done = order.filter((a) => this.state(a) === "report");
-    const seated = order.filter((a) => this.state(a) !== "report" && !((this.walkUntil[a.address] ?? 0) > now));
+    const walking = (a) => (this.walkUntil[a.address] ?? 0) > now;
+    const toBoss = order.filter((a) => this.placeOf(a) === "boss");
+    const toGM = order.filter((a) => this.placeOf(a) === "gm");
+    const k = (a) => Math.max(0, (this.placeOf(a) === "gm" ? toGM : toBoss).indexOf(a));
+    const still = (a) => this.placeOf(a) === "seat" && !walking(a);
     // 後排先畫，前排的人擋在前面。
-    const moving = order.filter((a) => !seated.includes(a)).sort((a, b) => done.indexOf(b) - done.indexOf(a));
-    this.doneCount = done.length;
+    const atGM = toGM.filter((a) => !walking(a)).reverse();
+    const moving = order.filter((a) => !still(a) && !atGM.includes(a)).sort((a, b) => toBoss.indexOf(b) - toBoss.indexOf(a));
+    this.doneCount = toBoss.length;
 
     return div().id("office").relative().size_full().overflow_hidden().bg(C.floor)
       .on_size_change((size, cx) => { this.size = size; cx.notify(); })
@@ -276,16 +335,20 @@ export default class Office extends View {
         .child(h_flex().absolute().left(12).top(7).gap(6).items_center()
           .child(div().text_size(13).font_weight(800).text_color(C.ink).child(z.name))
           .child(div().text_size(11).text_color(C.muted).child(z.people.length ? `${z.people.length} 人` : "還沒有人")))))
-      .children(seated.map((a) => this.person(a, seats[a.address], 0, now)))
+      .children(staff.filter(still).map((a) => this.person(a, seats[a.address], 0, now)))
       .children(zones.flatMap((z) => z.people.length
         ? z.people.map((a) => this.desk(a, seats[a.address]))
         : [div().id(`empty-${z.id}`).absolute().left(z.x + PAD).top(z.y + 36).w(z.w - PAD * 2).h(30).rounded(8)
             .border(1).border_dashed().border_color("#C4A97F").flex().items_center().justify_center()
             .text_size(12).font_weight(600).text_color(C.muted).cursor_pointer().hover((s) => s.bg("#EFE2CB"))
             .on_click(() => this.hire(z.id)).child("＋ 新增員工")]))
-      .children(moving.map((a) => this.person(a, seats[a.address], done.indexOf(a), now)))
+      .when(Boolean(gm), (el) => el
+        .children(atGM.map((a) => this.person(a, seats[a.address], k(a), now)))
+        .when(still(gm), (el) => el.child(this.person(gm, seats[gm.address], 0, now)))
+        .child(this.gmDesk(gm)))
+      .children(moving.map((a) => this.person(a, seats[a.address], k(a), now)))
       .child(this.boss())
-      .child(this.waitingNote(done.length))
+      .when(!gm, (el) => el.child(this.waitingNote(toBoss.length)))
       .child(this.header(list));
   }
 

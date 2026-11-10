@@ -1,11 +1,22 @@
 // 換造型：21 種人物和動物，點一下就換；造型存在 shared("office.looks")，以分頁為單位。
+// 右上角可以把這位設為總經理（shared("office.gm")），或取消。
 import { View, div, image } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { props, closeOverlay, theme, shared, setShared } from "herdr";
+import { props, closeOverlay, theme, shared, setShared, agents } from "herdr";
 
 const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
 const DEFAULT_LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
 const NAME = { short: "短髮", long: "長髮", bun: "包頭", curly: "捲髮", bob: "鮑伯頭", ponytail: "馬尾", beard: "大鬍子", glasses: "眼鏡", cap: "棒球帽", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸", tiger: "老虎", lion: "獅子", koala: "無尾熊", penguin: "企鵝", monkey: "猴子", frog: "青蛙" };
+
+const GM_NAME = /^(g\.?\s*m\.?|總經理)$/i;
+
+// 跟辦公室畫面同一套規則：右鍵設定的優先，沒設定就看名稱。
+function gmTab() {
+  const picked = shared("office.gm");
+  if (picked === "none") return null;
+  const list = agents();
+  return list.find((a) => a.tab && a.tab === picked)?.tab ?? list.find((a) => GM_NAME.test((a.tab_name ?? "").trim()))?.tab ?? null;
+}
 
 function current(tab) {
   const picked = shared("office.looks")?.[tab];
@@ -37,7 +48,12 @@ export default class Look extends View {
     return v_flex().id("office-look").track_focus(this.handle)
       .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(p.overlay); cx.stop_propagation(); } })
       .w_full().p(14).gap(8).bg(t.popover).text_color(t.foreground)
-      .child(div().text_size(13.5).font_semibold().pb(4).child(p.name ? `幫「${p.name}」換造型` : "換造型"))
+      .child(h_flex().pb(4).items_center()
+        .child(div().flex_1().text_size(13.5).font_semibold().child(p.name ? `幫「${p.name}」換造型` : "換造型"))
+        .child(div().id("gm-toggle").px(10).py(4).rounded(7).border_1().border_color(t.border).bg(t.raised)
+          .text_size(12).cursor_pointer().hover((s) => s.bg(t.hover))
+          .on_click(() => { setShared("office.gm", gmTab() === p.tab ? "none" : p.tab); closeOverlay(p.overlay); })
+          .child(gmTab() === p.tab ? "不當總經理" : "設為總經理")))
       .children(rows);
   }
 }
