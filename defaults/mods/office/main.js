@@ -3,7 +3,7 @@
 // 有總經理時：員工做完走到總經理桌前排隊，總經理收了（herdr.seen）就回座位；
 // 總經理做完拿報告走到你的辦公桌前，要你決定時在座位上舉手。
 // 沒有總經理時：員工做完直接走到你的辦公桌前，最後在問你問題的就舉手。
-// 點員工打開他的工作畫面（下方的終端機）；右鍵或工作畫面標頭的「換造型」可以換人物或動物、設總經理。
+// 點員工打開他的工作畫面（右邊的終端機）；右鍵或工作畫面標頭的「換造型」可以換人物或動物、設總經理。
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, spaces, panes, props, run, setAgentOrder, openOverlay, nextCommand, layouts, shared, setShared, hc } from "herdr";
@@ -14,7 +14,9 @@ const C = {
   ink: "#3D3731", muted: "#7A6E62", wood: "#7E5B3E", plate: "#5A4330",
   cream: "#FFF9EE", orange: "#E07B39", green: "#3E9B6A",
 };
-const SEAT_W = 120, SEAT_H = 130, PAD = 12, ZONE_HEAD = 44, GAP = 14, TOP = 66, BOSS_W = 250, WALK_MS = 2400;
+const SEAT_W = 120, SEAT_H = 130, PAD = 12, ZONE_HEAD = 44, GAP = 14, BOSS_W = 250, WALK_MS = 2400;
+// 辦公室比這個窄時（左邊辦公室、右邊工作畫面）：標題分兩行，總經理桌和你的辦公桌並排在下方。
+const NARROW = 900, FRONT_H = 214;
 const WORD = { work: "工作中", ask: "要你回答", report: "報告好了", toGM: "交給總經理", rest: "休息中" };
 const GM_NAME = /^(g\.?\s*m\.?|總經理)$/i;
 export const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
@@ -131,10 +133,13 @@ export default class Office extends View {
     return st === "report" ? "boss" : st === "toGM" ? "gm" : "seat";
   }
 
+  narrow() { return this.size.width < NARROW; }
+  top() { return this.narrow() ? 100 : 66; }
+
   // 排座位：一個空間一區，一位員工一張桌子，放不下就換行。
   plan(list) {
     const W = this.size.width;
-    const room = Math.max(SEAT_W + PAD * 2, W - BOSS_W - 32);
+    const room = Math.max(SEAT_W + PAD * 2, W - (this.narrow() ? 0 : BOSS_W) - 32);
     const perRow = Math.max(1, Math.floor((room - PAD * 2) / SEAT_W));
     const local = spaces().filter((s) => !s.machine);
     const groups = local.map((s) => ({ id: s.id, name: s.name, people: [] }));
@@ -144,7 +149,7 @@ export default class Office extends View {
       g.people.push(a);
     }
     const zones = [], seats = {};
-    let x = 16, y = TOP, rowH = 0;
+    let x = 16, y = this.top(), rowH = 0;
     for (const g of groups) {
       const n = g.people.length;
       const cols = Math.min(n, perRow), rows = Math.ceil(n / perRow);
@@ -165,14 +170,16 @@ export default class Office extends View {
   slot(k) {
     const W = this.size.width, H = this.size.height;
     const bx = W - BOSS_W + 14, deskTop = H - 118;
-    const rows = Math.max(1, Math.floor((deskTop - 30 - (TOP + 34)) / 34) + 1);
+    const rows = this.narrow() ? 2 : Math.max(1, Math.floor((deskTop - 30 - (this.top() + 34)) / 34) + 1);
     const row = Math.min(Math.floor(k / 4), rows - 1), col = k % 4;
     return { x: bx + 22 + col * 46 + (row % 2) * 20, y: deskTop - 30 - row * 34 };
   }
 
-  // 總經理的桌子在右邊上方，你的辦公桌在右下。
+  // 總經理的桌子在右邊上方，你的辦公桌在右下；窄的時候總經理桌放在你的辦公桌左邊。
   gmDeskPos() {
-    return { x: this.size.width - BOSS_W + 14, y: TOP + 58 };
+    const W = this.size.width, H = this.size.height;
+    if (this.narrow()) return { x: Math.max(16, W - BOSS_W - 214), y: H - 92 };
+    return { x: W - BOSS_W + 14, y: this.top() + 58 };
   }
 
   gmSeat() {
@@ -251,14 +258,21 @@ export default class Office extends View {
     const count = (st) => list.filter((a) => this.state(a) === st).length;
     const chip = (st, color) => h_flex().gap(5).items_center()
       .child(div().size(8).rounded(4).bg(color)).child(div().child(`${WORD[st]} ${count(st)}`));
-    return h_flex().absolute().left(20).top(14).right(16).items_center().gap(16).text_color(C.ink)
+    const chips = h_flex().gap(14).text_size(12).text_color(C.ink)
+      .child(chip("work", "#5B8DEF")).child(chip("ask", C.orange))
+      .when(Boolean(this.gm), (el) => el.child(chip("toGM", "#C9A227")))
+      .child(chip("report", C.green)).child(chip("rest", "#A99C8C"));
+    const top = h_flex().items_center().gap(16)
       .child(div().text_size(22).font_weight(800).child("辦公室"))
       .child(div().text_size(12.5).text_color(C.muted).child(`${list.length} 位員工`))
-      .child(div().flex_1())
-      .child(h_flex().gap(14).text_size(12).text_color(C.ink)
-        .child(chip("work", "#5B8DEF")).child(chip("ask", C.orange))
-        .when(Boolean(this.gm), (el) => el.child(chip("toGM", "#C9A227")))
-        .child(chip("report", C.green)).child(chip("rest", "#A99C8C")))
+      .child(div().flex_1());
+    if (this.narrow()) return v_flex().absolute().left(20).top(12).right(16).gap(12).text_color(C.ink)
+      .child(this.buttons(top.gap(12))).child(chips);
+    return this.buttons(top.absolute().left(20).top(14).right(16).text_color(C.ink).child(chips));
+  }
+
+  buttons(row) {
+    return row
       .child(div().id("to-classic").px(12).py(6).rounded(8).border(1).border_color(C.rugLine).bg(C.cream)
         .text_color(C.plate).text_size(12.5).font_weight(600).cursor_pointer().hover((s) => s.bg("#FFFFFF"))
         .on_click(() => run("layout.switch", { name: layouts().includes("classic") ? "classic" : "main" })).child("原本畫面"))
@@ -277,7 +291,8 @@ export default class Office extends View {
 
   waitingNote(waiting) {
     const bx = this.size.width - BOSS_W + 14;
-    return div().absolute().left(bx).top(TOP + 4).w(200).flex().justify_center()
+    const at = this.narrow() ? { x: this.gmDeskPos().x, y: this.size.height - 70 } : { x: bx, y: this.top() + 4 };
+    return div().absolute().left(at.x).top(at.y).w(200).flex().justify_center()
       .text_size(12).font_weight(waiting ? 700 : 400).text_color(waiting ? C.green : C.muted)
       .child(waiting ? `${waiting} 份報告等你看` : "目前沒有人在等你");
   }
@@ -327,8 +342,11 @@ export default class Office extends View {
 
     return div().id("office").relative().size_full().overflow_hidden().bg(C.floor)
       .on_size_change((size, cx) => { this.size = size; cx.notify(); })
-      .child(div().absolute().left(0).top(0).right(0).h(54).bg(C.wall))
-      .child(div().absolute().left(0).top(54).right(0).h(3).bg("#D9C7A8"))
+      .child(div().absolute().left(0).top(0).right(0).h(this.narrow() ? 86 : 54).bg(C.wall))
+      .child(div().absolute().left(0).top(this.narrow() ? 86 : 54).right(0).h(3).bg("#D9C7A8"))
+      .when(this.narrow(), (el) => el
+        .child(div().absolute().left(0).top(this.size.height - FRONT_H).right(0).h(FRONT_H).bg("#E4D2B4"))
+        .child(div().absolute().left(0).top(this.size.height - FRONT_H).right(0).h(3).bg("#D9C7A8")))
       .children(zones.map((z) => div().id(`zone-${z.id}`).absolute().left(z.x).top(z.y).w(z.w).h(z.h)
         .rounded(12).bg(C.rug).border(1).border_color(C.rugLine).cursor_pointer()
         .on_click(() => run("space.select", { id: z.id }))
