@@ -12,7 +12,8 @@ AI Office still runs terminals and agents through
 
 - An office layout (`defaults/layouts/office.json`, `defaults/mods/office`,
   `defaults/mods/office-hire`): each agent is a person at a desk; working,
-  needs-you, done and idle are shown as what they do. It is the first screen.
+  needs-you, done and idle are shown as what they do. The office sits on the
+  left and the work pane on the right. It is the first screen.
 - 21 looks for the office people (nine people and twelve animals), picked
   when hiring, from the right-click menu or from the work pane's header
   (`defaults/mods/office-look`, art from `scripts/office-art.py`). An agent that
