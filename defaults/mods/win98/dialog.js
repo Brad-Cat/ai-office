@@ -25,8 +25,8 @@ import { userName } from "./taskbar.js";
 
 const KIND_TITLE = {
   run: "Run",
-  shutdown: "Shut Down AI Office",
-  logoff: "Log Off AI Office",
+  shutdown: "Shut Down HeadChicken",
+  logoff: "Log Off HeadChicken",
   about: "About Office 98",
   taskman: "Close Program",
   display: "Display Properties",
@@ -128,7 +128,7 @@ export default class Dialog {
             .child("It's now safe to turn off")
             .child("your computer."),
         );
-    const msg = this.p.mode === "shutdown" || this.stage === 0 ? "AI Office is shutting down..." : "Starting Office 98...";
+    const msg = this.p.mode === "shutdown" || this.stage === 0 ? "HeadChicken is shutting down..." : "Starting Office 98...";
     return div()
       .size_full()
       .relative()
@@ -394,7 +394,7 @@ export default class Dialog {
           .gap(u(12))
           .items_start()
           .child(icon(u, "run", 32))
-          .child(v_flex().flex_1().children(lines("Type the name of a program, and AI Office will\nopen it for you in a new window."))),
+          .child(v_flex().flex_1().children(lines("Type the name of a program, and HeadChicken will\nopen it for you in a new window."))),
       )
       .child(
         h_flex()
@@ -627,7 +627,7 @@ export default class Dialog {
         .child(this.check(u, "snd", "Play &sounds (startup, dialogs, games)", shared("win98.mute") !== true, () => setShared("win98.mute", shared("win98.mute") !== true)))
         .child(this.check(u, "clippy", "Show the &Office Assistant", shared("win98.clippy") !== "off", () => setShared("win98.clippy", shared("win98.clippy") === "off" ? "on" : "off")))
         .child(etch(u))
-        .child(v_flex().text_color(C.gray).children(lines("Sounds also follow AI Office's own setting\n(Control Panel > Alerts)."))),
+        .child(v_flex().text_color(C.gray).children(lines("Sounds also follow HeadChicken's own setting\n(Control Panel > Alerts)."))),
       v_flex()
         .gap(u(10))
         .p(u(6))
@@ -635,7 +635,7 @@ export default class Dialog {
         .child(this.radio(u, "s1", "&Small Fonts (pixel perfect)", scaleNow === 1, () => setShared("win98.scale", 1)))
         .child(this.radio(u, "s2", "&Large Fonts (every pixel doubled)", scaleNow === 2, () => setShared("win98.scale", 2)))
         .child(etch(u))
-        .child(v_flex().text_color(C.gray).children(lines(`AI Office's zoom is ${settings()?.zoom ?? 1}x; Office 98 draws whole\npixels at any zoom.`))),
+        .child(v_flex().text_color(C.gray).children(lines(`HeadChicken's zoom is ${settings()?.zoom ?? 1}x; Office 98 draws whole\npixels at any zoom.`))),
     ][this.page];
     return v_flex()
       .p(u(8))
@@ -777,10 +777,10 @@ export default class Dialog {
 
   renderWelcome(u) {
     const items = [
-      { icon: "programs", title: "Begin an Agent", text: "AI Office runs your coding agents in windows,\nlike it's 1998 and the future at once.\n\nStart one from Start > Programs > Agents,\nor open the Run box and type its name.", go: "&Run...", act: { dialog: { kind: "run", value: "claude" } } },
+      { icon: "programs", title: "Begin an Agent", text: "HeadChicken runs your coding agents in windows,\nlike it's 1998 and the future at once.\n\nStart one from Start > Programs > Agents,\nor open the Run box and type its name.", go: "&Run...", act: { dialog: { kind: "run", value: "claude" } } },
       { icon: "help", title: "Discover Office 98", text: "The taskbar is your tabs. The folders on\nthe desktop are your spaces. Each window\nis a pane: double-click its title bar to\nmaximize it, or use _ to minimize the tab.\n\nCtrl+Esc opens the Start menu.", go: "&Help", act: { run: ["app.help", {}] } },
       { icon: "mines", title: "Play Mines", text: "Your agent is thinking.\nYou've earned a break.\n\nSolitaire is on the desktop too.", go: "&Play", act: { app: "mines" } },
-      { icon: "taskman", title: "Maintain Your Computer", text: "See every program AI Office runs, and end\nthe ones you don't need anymore.\n\nCtrl+Shift+Esc opens it anytime.", go: "&Open", act: { dialog: { kind: "taskman" } } },
+      { icon: "taskman", title: "Maintain Your Computer", text: "See every program HeadChicken runs, and end\nthe ones you don't need anymore.\n\nCtrl+Shift+Esc opens it anytime.", go: "&Open", act: { dialog: { kind: "taskman" } } },
       { icon: "logoff", title: "Leave Office 98", text: "Miss the future? Log Off takes you\nback to the normal layout.\nYour terminals keep running.", go: "&Log Off", act: { dialog: { kind: "logoff" } } },
     ];
     const it = items[this.sel] ?? items[0];
@@ -801,7 +801,7 @@ export default class Dialog {
               .gap(u(6))
               .child(icon(u, "start", 32))
               .child(div().text_size(u(22)).line_height(`${u(26)}px`).text_color(C.navy).child("Welcome to"))
-              .child(div().text_size(u(22)).line_height(`${u(26)}px`).font_weight(700).text_color(C.text).child("AI Office"))
+              .child(div().text_size(u(22)).line_height(`${u(26)}px`).font_weight(700).text_color(C.text).child("HeadChicken"))
               .child(div().text_size(u(22)).line_height(`${u(26)}px`).text_color("#d07000").child("98")),
           ),
       )
@@ -904,7 +904,7 @@ export default class Dialog {
         .w_full()
         .min_h(0),
     ).child(
-      this.frame(u, p.title ?? KIND_TITLE[this.kind] ?? "AI Office", body, {
+      this.frame(u, p.title ?? KIND_TITLE[this.kind] ?? "HeadChicken", body, {
         icon: iconFor ? icon(u, iconFor, 16) : null,
         help: !explorerish,
       }),

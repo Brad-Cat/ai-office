@@ -212,7 +212,7 @@ export default class Taskbar {
       act: { run: ["layout.switch", { name }] },
     }));
     return [
-      { label: "AI Office Update", icon: "update", act: { run: ["app.settings", { section: "updates" }] } },
+      { label: "HeadChicken Update", icon: "update", act: { run: ["app.settings", { section: "updates" }] } },
       { sep: true },
       {
         label: "&Programs",

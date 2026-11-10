@@ -1,4 +1,4 @@
-# AI Office: draws the office people. Bodies by AI colour and pose, heads by look and mood.
+# HeadChicken: draws the office people. Bodies by AI colour and pose, heads by look and mood.
 # Desks and the boss desk are hand-written SVGs in defaults/mods/office.
 #   python3 scripts/office-art.py defaults/mods/office
 import os, sys
