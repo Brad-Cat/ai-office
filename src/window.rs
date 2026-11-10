@@ -1,4 +1,4 @@
-// Modified by AI Office (Brad-Cat/ai-office): ships and opens the office layout.
+// Modified by HeadChicken (Brad-Cat/headchicken): ships and opens the office layout.
 //! The window. The chrome (`layouts/<name>.json`) is a tree of the locked
 //! primitives; a `{ "tab": "active" }` block shows the selected
 //! tab's terminals as it arranges them. Every visible part that isn't a
@@ -139,7 +139,7 @@ const LAYOUTS: &[(&str, &str)] = &[
     ("main", include_str!("../defaults/layouts/main.json")),
     ("terminals", include_str!("../defaults/layouts/terminals.json")),
     ("win98", include_str!("../defaults/layouts/win98.json")),
-    // AI Office: the office layout, shown first.
+    // HeadChicken: the office layout, shown first.
     ("office", include_str!("../defaults/layouts/office.json")),
 ];
 
@@ -582,7 +582,7 @@ impl AppWindow {
         // A layout whose mods are gone (Zen, T4, ADE after the update took
         // theirs) starts on Herdr's instead of a wall of "did not load".
         let gone = name.as_deref().map(missing_mods).unwrap_or_default();
-        // AI Office: a first start opens the office layout.
+        // HeadChicken: a first start opens the office layout.
         w.load_layout(if gone.is_empty() { name.as_deref().unwrap_or("office") } else { "main" });
         w.apply_look(window, cx);
         w.show_layout_notes(window, cx);

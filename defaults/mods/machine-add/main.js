@@ -1,4 +1,4 @@
-// Modified by AI Office (Brad-Cat/ai-office): AI Office name in visible text.
+// Modified by HeadChicken (Brad-Cat/headchicken): HeadChicken name in visible text.
 // Add a machine: the hosts in ~/.ssh/config to pick from (or type one),
 // each added with one click (`hc machine add`). When the machine needs
 // something first (herdr-core installed there, a password, a new host
@@ -284,7 +284,7 @@ export default class MachineAdd extends View {
           .text_size(12.8)
           .line_height("19px")
           .text_color(t.muted)
-          .child("A VPS, a Mac mini, a box at home: AI Office reaches it over ssh, and agents there keep running while your laptop sleeps."),
+          .child("A VPS, a Mac mini, a box at home: HeadChicken reaches it over ssh, and agents there keep running while your laptop sleeps."),
       )
       .child(div().pt(16).pb(6).text_size(11.5).font_medium().text_color(t.dim).child(hosts.length ? "From your ssh config" : "Your ssh config lists no hosts"))
       .child(

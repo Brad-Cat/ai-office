@@ -97,12 +97,12 @@ the screen.
 
 ## Customize layouts, keys, or mods
 
-First read `~/.config/ai-office/AGENTS.md` (or `$HERDR_APP_HOME/AGENTS.md` if
+First read `~/.config/headchicken/AGENTS.md` (or `$HERDR_APP_HOME/AGENTS.md` if
 set). It is the installed guide to settings, layouts, commands and mods.
 Read the generated `.d.ts` files beside it for full API details; do not edit
 those files or the generated guide. The app rewrites them on start.
 
-- Home defaults to `~/.config/ai-office`; `HERDR_APP_HOME` selects another.
+- Home defaults to `~/.config/headchicken`; `HERDR_APP_HOME` selects another.
 - Mods live in `mods/<name>/` with `main.js` and optional `mod.json`.
   They are trusted JavaScript with command and network access.
   `"focusable": true` in `mod.json` lets `pane.go` move onto a copy; it receives
@@ -124,7 +124,7 @@ those files or the generated guide. The app rewrites them on start.
 After every mod change:
 
 ```sh
-herdr-app check ~/.config/ai-office/mods/<name>
+herdr-app check ~/.config/headchicken/mods/<name>
 herdr-app status
 herdr-app shot /tmp/mod.png   # then look at the picture
 ```

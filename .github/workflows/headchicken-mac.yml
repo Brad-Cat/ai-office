@@ -1,7 +1,7 @@
-# AI Office: builds the macOS app on every push and keeps it as a download
+# HeadChicken: builds the macOS app on every push and keeps it as a download
 # (Actions run page, "Artifacts"). Herdr's own ci.yml and release.yml are
 # turned off in this repo.
-name: AI Office (macOS)
+name: HeadChicken (macOS)
 
 on:
   push:
@@ -44,12 +44,13 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
+          # The cache key keeps the old name so the Rust build cache carries over.
           key: ai-office-${{ matrix.runner }}-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-${{ hashFiles('Cargo.lock', 'vendor/**', 'crates/**') }}
           restore-keys: ai-office-${{ matrix.runner }}-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-
       - name: Build and pack
-        run: scripts/package-ai-office
+        run: scripts/package-headchicken
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: AI-Office-${{ matrix.runner }}
-          path: dist/AI-Office-macos-*.zip
+          name: HeadChicken-${{ matrix.runner }}
+          path: dist/HeadChicken-macos-*.zip
           retention-days: 30

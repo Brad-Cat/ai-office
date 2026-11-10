@@ -1,4 +1,4 @@
-// Modified by AI Office (Brad-Cat/ai-office): AI Office name in visible text.
+// Modified by HeadChicken (Brad-Cat/headchicken): HeadChicken name in visible text.
 // The frame's command palette: everything you can do, by name, with its key.
 // Places (spaces, tabs) stay in the picker. Fuzzy: your letters in
 // order, word starts and runs rank higher. Empty: recent first, then every
@@ -59,7 +59,7 @@ const NAMED = [
   ["app.zoom_in", {}, "App", "Zoom in", "bigger font size"],
   ["app.zoom_out", {}, "App", "Zoom out", "smaller font size"],
   ["app.zoom_reset", {}, "App", "Reset zoom", "font size"],
-  ["app.quit", {}, "App", "Quit AI Office", "exit"],
+  ["app.quit", {}, "App", "Quit HeadChicken", "exit"],
   ...["graphite", "ink", "moss", "atom-one-dark"].map((n) => ["app.theme", { name: n }, "App", `Theme: ${n.replace(/-/g, " ")}`, "colors look"]),
 ];
 

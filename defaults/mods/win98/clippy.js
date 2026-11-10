@@ -10,8 +10,8 @@ import { C, ASSETS, unit, root, button, label, sfx, own } from "./kit.js";
 
 const TIPS = [
   "It looks like you're herding agents.\n\nDid you know? Ctrl+Esc opens the Start menu.",
-  "Click a tab's taskbar button while it's\nshown to minimize it (AI Office settles it).\nClick again to bring it back.",
-  "Ctrl+Shift+Esc opens Close Program:\nevery terminal AI Office runs, and End Task.",
+  "Click a tab's taskbar button while it's\nshown to minimize it (HeadChicken settles it).\nClick again to bring it back.",
+  "Ctrl+Shift+Esc opens Close Program:\nevery terminal HeadChicken runs, and End Task.",
   "Right-click a folder on the desktop to\nrename or close that space.",
   "Waiting on an agent? Mines is on\nthe desktop. I won't tell anyone.",
   "Double-click a window's title bar to\nmaximize it. Double-click again to restore.",

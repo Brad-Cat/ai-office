@@ -1,4 +1,4 @@
-// Modified by AI Office (Brad-Cat/ai-office): AI Office name in visible text.
+// Modified by HeadChicken (Brad-Cat/headchicken): HeadChicken name in visible text.
 // One window for this launch's unpresented spotlights. The app supplies the
 // release range; only entries shown in full here count as presented.
 import { View, div, svg, image } from "gpui-kit";
@@ -43,7 +43,7 @@ export default class WhatsNew extends View {
       })
       .child(h_flex().flex_none().h(52).cursor_grab().pl(20).pr(12).gap(10).items_center().border_b(1).border_color(t.border)
         .child(image("frame/welcome/herdr.png").w(24).h(24).rounded(6).flex_none())
-        .child(div().text_size(14).font_semibold().text_color(t.foreground).child("What's new in AI Office"))
+        .child(div().text_size(14).font_semibold().text_color(t.foreground).child("What's new in HeadChicken"))
         .child(div().flex_1())
         .child(div().id("wn-close").size(26).rounded(7).flex().items_center().justify_center()
           .text_color(t.muted).cursor_pointer().hover(s => s.bg(t.hover).text_color(t.foreground))

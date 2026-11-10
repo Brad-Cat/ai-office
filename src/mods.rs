@@ -1,4 +1,4 @@
-// Modified by AI Office (Brad-Cat/ai-office): the app home is ~/.config/ai-office.
+// Modified by HeadChicken (Brad-Cat/headchicken): the app home is ~/.config/headchicken.
 //! Mods: folders of JavaScript under ~/.config/herdr-app/mods that agents write and
 //! Herdr runs live (gpui-shell), plus the `herdr` module they import.
 
@@ -48,11 +48,11 @@ pub fn note_fonts(cx: &gpui::App) {
 }
 
 /// The app's home: `$HERDR_APP_HOME` (tests, experiments), else
-/// `$XDG_CONFIG_HOME/ai-office`, else `~/.config/ai-office`, on every OS
-/// (AI Office: its own home, so it never shares files with Herdr).
+/// `$XDG_CONFIG_HOME/headchicken`, else `~/.config/headchicken`, on every OS
+/// (HeadChicken: its own home, so it never shares files with Herdr).
 pub fn app_dir() -> PathBuf {
     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
-    env("HERDR_APP_HOME").unwrap_or_else(|| env("XDG_CONFIG_HOME").unwrap_or_else(|| home().join(".config")).join("ai-office"))
+    env("HERDR_APP_HOME").unwrap_or_else(|| env("XDG_CONFIG_HOME").unwrap_or_else(|| home().join(".config")).join("headchicken"))
 }
 
 pub fn mods_dir() -> PathBuf {

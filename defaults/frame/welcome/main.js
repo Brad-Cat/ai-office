@@ -1,4 +1,4 @@
-// Modified by AI Office (Brad-Cat/ai-office): AI Office name in visible text.
+// Modified by HeadChicken (Brad-Cat/headchicken): HeadChicken name in visible text.
 // First-run welcome over the live app; records finished/skipped in frame.welcomed.
 
 import { View, div, svg, image } from "gpui-kit";
@@ -8,7 +8,7 @@ import { spaces, run, theme, props, closeOverlay, setShared, shared, hc, appHome
 const I = (name) => `frame/welcome/${name}.svg`;
 const W = (name) => `mods/workspace-chrome/${name}.svg`;
 const PAGES = 4;
-const ASK = "Read ~/.config/ai-office/AGENTS.md, then tell me what you can change in AI Office.";
+const ASK = "Read ~/.config/headchicken/AGENTS.md, then tell me what you can change in HeadChicken.";
 const MIGRATE = "Read `herdr-app --skill`, then migrate my keybinds and settings from ~/.config/herdr/config.toml";
 const APPEARANCES = [
   [null, "System"],
@@ -285,7 +285,7 @@ export default class Welcome extends View {
   pageOne(t) {
     return v_flex()
       .gap(18)
-      .child(this.title(t, "AI Office runs your terminals in the background", "The terminals and agents you open here don't live in this window. They run in herdr-core, a small background program on your computer. Close AI Office, update it, or let it crash, and your agents keep working. Open it again and everything is where you left it, as long as the computer is on."))
+      .child(this.title(t, "HeadChicken runs your terminals in the background", "The terminals and agents you open here don't live in this window. They run in herdr-core, a small background program on your computer. Close HeadChicken, update it, or let it crash, and your agents keep working. Open it again and everything is where you left it, as long as the computer is on."))
       .child(this.feature(t, "bot", "Agents tell you when they need you", "A ring while one works, \u201cNeeds you\u201d when it asks something, a sound when it finishes."))
       .child(this.feature(t, "messages", "Agents can start helpers", "They show up under the agent that started them. Click one to watch it."))
       .child(this.feature(t, "layers", "Your other machines, in the same window", "A server or a Mac mini runs its own herdr-core, so its agents keep going even while this laptop sleeps."))
@@ -312,7 +312,7 @@ export default class Welcome extends View {
   pageTwo(t) {
     return v_flex()
       .gap(18)
-      .child(this.title(t, "Add your other machines", "Pick a host from your ssh config. AI Office connects, installs herdr-core there if it's missing, and lists that machine in the sidebar with its own spaces."))
+      .child(this.title(t, "Add your other machines", "Pick a host from your ssh config. HeadChicken connects, installs herdr-core there if it's missing, and lists that machine in the sidebar with its own spaces."))
       .child(
         v_flex()
           .rounded(12)
@@ -396,7 +396,7 @@ export default class Welcome extends View {
     if (shared("workspace.panels") === undefined || shared("workspace.panels") === null) setShared("workspace.panels", []);
     return v_flex()
       .gap(14)
-      .child(this.title(t, "Choose your panels", "AI Office comes with a couple of panels. Turn one on and it appears beside your terminals. Drag this window aside to see it. Later, the buttons in the tab bar open and close them."))
+      .child(this.title(t, "Choose your panels", "HeadChicken comes with a couple of panels. Turn one on and it appears beside your terminals. Drag this window aside to see it. Later, the buttons in the tab bar open and close them."))
       .children(PANELS.map((p) => this.panelCard(t, p)))
       .child(
         h_flex()
@@ -497,7 +497,7 @@ export default class Welcome extends View {
           .border_b(1)
           .border_color(t.border)
           .child(image("frame/welcome/herdr.png").w(24).h(24).rounded(6).flex_none())
-          .child(div().text_size(14).font_semibold().text_color(t.foreground).child("Welcome to AI Office"))
+          .child(div().text_size(14).font_semibold().text_color(t.foreground).child("Welcome to HeadChicken"))
           .child(div().px(6).py(0.5).rounded(5).border_1().border_color(t.input).text_color(t.muted).text_size(10.5).font_semibold().child("BETA"))
           .child(div().flex_1())
           .child(div().text_size(11.5).text_color(t.dim).child("Drag to move"))
