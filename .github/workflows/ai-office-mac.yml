@@ -1,0 +1,55 @@
+# AI Office: builds the macOS app on every push and keeps it as a download
+# (Actions run page, "Artifacts"). Herdr's own ci.yml and release.yml are
+# turned off in this repo.
+name: AI Office (macOS)
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RUST_TOOLCHAIN: 1.95.0
+  ZIG_VERSION: 0.16.0
+
+jobs:
+  build:
+    # Apple silicon only (Herdr ships no Intel Mac build; on the Intel runner the
+    # Zig build of libghostty-vt ran past two hours). macos-15 kept getting no
+    # free runner and macos-14 is no longer offered; macos-26 builds.
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-26]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - name: Restore build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ai-office-${{ matrix.runner }}-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-${{ hashFiles('Cargo.lock', 'vendor/**', 'crates/**') }}
+          restore-keys: ai-office-${{ matrix.runner }}-${{ env.RUST_TOOLCHAIN }}-zig${{ env.ZIG_VERSION }}-
+      - name: Build and pack
+        run: scripts/package-ai-office
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: AI-Office-${{ matrix.runner }}
+          path: dist/AI-Office-macos-*.zip
+          retention-days: 30

@@ -1,4 +1,4 @@
-# Herdr 98
+# Office 98
 
 A Windows 98 layout for Herdr: `layouts/win98.json` + `themes/win98.json` +
 this mod. One mod, many roles (`main.js`): taskbar, desktop, window (pane

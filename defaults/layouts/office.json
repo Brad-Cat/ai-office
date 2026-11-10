@@ -1,0 +1,16 @@
+{
+  "id": "office-root", "type": "column", "theme": "graphite",
+  "font_size": 14, "ui_font": "Geist", "background": "#5E4632",
+  "terminal_padding": [10, 12],
+  "preview": "layouts/office.svg",
+  "children": [
+    { "id": "office-floor", "type": "block", "size": { "weight": 1.15 }, "min": 300, "content": { "mod": "office" } },
+    { "id": "office-rail", "type": "block", "size": { "px": 30 }, "content": { "mod": "office", "props": { "role": "rail" } } },
+    { "id": "office-work", "type": "block", "size": { "weight": 1 }, "padding": [8, 10], "background": "#5E4632",
+      "content": { "tab": "active", "pane": { "gap": 8, "radius": 6, "lone": true,
+        "border": { "width": 1, "color": "#7E5B3E" }, "focus": { "width": 2, "color": "#E0B07A" },
+        "header": { "content": { "mod": "office", "props": { "role": "pane" } }, "height": 28, "position": "top", "reveal": "always" }
+      } }
+    }
+  ]
+}

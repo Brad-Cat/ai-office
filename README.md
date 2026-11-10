@@ -1,3 +1,14 @@
+# AI Office
+
+Your coding agents as people in an office: each one sits at a desk, raises a hand
+when it needs you, and walks to your desk with its report when it's done.
+Click a person to see its terminal and talk to it.
+
+AI Office is a modified version of Herdr. See [NOTICE.md](NOTICE.md) for what
+changed. The Herdr README follows unchanged.
+
+---
+
 # Herdr
 
 Herdr is a desktop app for terminals and coding agents. Keep work in spaces, see which agents need you, and leave terminals running when you close the window.
