@@ -14,10 +14,12 @@ HeadChicken still runs terminals and agents through
   `defaults/mods/office-hire`): each agent is a person at a desk; working,
   needs-you, done and idle are shown as what they do. The office sits on the
   left and the work pane on the right. It is the first screen.
-- 21 looks for the office people (nine people and twelve animals), picked
-  when hiring, from the right-click menu or from the work pane's header
-  (`defaults/mods/office-look`, art from `scripts/office-art.py`). An agent that
-  ends its turn with a question raises its hand instead of walking over.
+- 3D cartoon art for the office (`defaults/mods/office/art`, positions in
+  `art.js`), drawn on an isometric floor. Nine looks (three people and six
+  animals) and three outfits, picked when hiring, from the right-click menu or
+  from the work pane's header (`defaults/mods/office-look`); the outfit colour
+  follows the agent. An agent that ends its turn with a question raises its
+  hand instead of walking over.
 - A button in Herdr's sidebar footer (`defaults/mods/workspace-chrome`) and in
   the office header to switch between the two screens.
 - Its own home folder, `~/.config/headchicken` (`src/mods.rs`), so it never

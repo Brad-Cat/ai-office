@@ -1,10 +1,14 @@
-// 新增員工：填職稱、取名字、選 AI、選造型、選坐哪一區，按「請他上工」就開一個新的 AI 分頁。
+// 新增員工：填職稱、取名字、選 AI、選造型和衣服、選坐哪一區，按「請他上工」就開一個新的 AI 分頁。
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { run, props, closeOverlay, theme, spaces, knownAgents, setShared } from "herdr";
 
-const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
-const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", curly: "捲髮", bob: "鮑伯頭", ponytail: "馬尾", beard: "大鬍子", glasses: "眼鏡", cap: "棒球帽", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸", tiger: "老虎", lion: "獅子", koala: "無尾熊", penguin: "企鵝", monkey: "猴子", frog: "青蛙" };
+const ART = "mods/office/art/";
+// 已經有 3D 圖的九種造型、三套衣服（衣服顏色看選哪家 AI）。
+const LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
+const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸" };
+const OUTFITS = ["polo", "hoodie", "cardigan"];
+const OUTFIT_NAME = { polo: "Polo 衫", hoodie: "帽 T", cardigan: "針織外套" };
 
 export default class Hire extends View {
   init(_props, cx) {
@@ -14,6 +18,7 @@ export default class Hire extends View {
     this.agent = null;
     this.loading = true;
     this.look = LOOKS[Math.floor(Math.random() * LOOKS.length)];
+    this.outfit = OUTFITS[Math.floor(Math.random() * OUTFITS.length)];
     this.title = InputState.new({ value: "" });
     this.person = InputState.new({ value: "", placeholder: "例如：小美" });
     this.task = InputState.new({ value: "" });
@@ -39,9 +44,9 @@ export default class Hire extends View {
     if (!name || !this.agent || !this.space) return;
     const task = this.task.value().trim();
     closeOverlay(props().overlay);
-    // 辦公室畫面等新分頁出現後，把這個造型記到它身上。
+    // 辦公室畫面等新分頁出現後，把這個造型和衣服記到它身上。
     const person = this.person.value().trim();
-    setShared("office.pendingLook", { space: this.space, name, look: this.look, person, at: Date.now() });
+    setShared("office.pendingLook", { space: this.space, name, look: this.look, outfit: this.outfit, person, at: Date.now() });
     run("tab.new", { space: this.space, name, argv: this.agent.run, ...(task ? { task } : {}) });
   }
 
@@ -56,6 +61,7 @@ export default class Hire extends View {
       .text_size(12.5).text_color(t.foreground).hover((s) => s.opacity(0.88)).on_click((_e, cx) => { onPick(); cx.notify(); }).child(content);
     const agentIcon = (a) => a.icon ? (a.tint ? svg(a.icon).size(14).text_color(t.foreground) : image(a.icon).size(14)) : div().size(14);
     const ready = Boolean(this.title.value().trim() && this.agent && this.space);
+    const color = /claude/i.test(this.agent?.name ?? "") ? "claude" : /codex/i.test(this.agent?.name ?? "") ? "codex" : "other";
     const button = (id, text, primary, action) => h_flex().id(id).h(32).px(14).items_center().rounded(8)
       .border_1().border_color(primary ? t.solid : t.input).bg(primary ? t.solid : t.raised)
       .text_color(primary ? t.solid_foreground : t.foreground).text_size(12.5).font_medium().cursor_pointer()
@@ -79,11 +85,18 @@ export default class Hire extends View {
           .child(this.loading ? "正在檢查這台電腦裝了哪些 AI…" : "這台電腦還沒有安裝 Claude Code 或 Codex"))))
       .child(label("造型"))
       .child(h_flex().gap(6).flex_wrap()
-        .children(LOOKS.map((look) => v_flex().id(`look-${look}`).w(62).h(52).items_center().justify_center().rounded(8).cursor_pointer()
+        .children(LOOKS.map((look) => v_flex().id(`look-${look}`).w(62).h(56).items_center().justify_center().rounded(8).cursor_pointer()
           .border_1().border_color(this.look === look ? t.accent : t.input).bg(this.look === look ? t.selected : t.raised)
           .hover((s) => s.opacity(0.88)).on_click((_e, cx) => { this.look = look; cx.notify(); })
-          .child(image(`mods/office/head-${look}-smile.svg`).size(30))
+          .child(image(`${ART}head-${look}-smile.png`).size(34))
           .child(div().text_size(10).text_color(t.dim).child(LOOK_NAME[look])))))
+      .child(label("衣服（顏色看是哪家 AI）"))
+      .child(h_flex().gap(6)
+        .children(OUTFITS.map((o) => v_flex().id(`outfit-${o}`).w(80).h(84).items_center().justify_center().gap(2).rounded(8).cursor_pointer()
+          .border_1().border_color(this.outfit === o ? t.accent : t.input).bg(this.outfit === o ? t.selected : t.raised)
+          .hover((s) => s.opacity(0.88)).on_click((_e, cx) => { this.outfit = o; cx.notify(); })
+          .child(image(`${ART}body-${o}-stand-${color}.png`).w(30).h(60))
+          .child(div().text_size(10).text_color(t.dim).child(OUTFIT_NAME[o])))))
       .child(label("坐在哪一區"))
       .child(h_flex().gap(8).flex_wrap()
         .children(spaces().filter((s) => !s.machine).map((s) => choice(`zone-${s.id}`, this.space === s.id, s.name, () => { this.space = s.id; }))))

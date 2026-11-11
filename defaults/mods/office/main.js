@@ -1,43 +1,65 @@
-// 辦公室：每個 AI 是一位坐在座位上的員工。
+// 辦公室：每個 AI 是一位坐在座位上的員工，畫成斜 45 度（等角）的 3D 卡通。
 // 工作中在打字；卡住等你時舉手；閒置時靠著椅背休息。
 // 有總經理時：員工做完走到總經理桌前排隊，總經理收了（herdr.seen）就回座位；
 // 總經理做完拿報告走到你的辦公桌前，要你決定時在座位上舉手。
 // 沒有總經理時：員工做完直接走到你的辦公桌前，最後在問你問題的就舉手。
-// 點員工打開他的工作畫面（右邊的終端機）；右鍵或工作畫面標頭的「取名・換造型」可以取名字、換人物或動物、設總經理。
-// 名字存在 shared("office.names")，以分頁為單位；桌上名牌上面寫名字、下面寫職稱（分頁名稱）。
-import { View, div, image, svg } from "gpui-kit";
+// 點員工打開他的工作畫面（右邊的終端機）；右鍵或工作畫面標頭的「取名・換造型」可以取名字、換造型和衣服、設總經理。
+// 名字存在 shared("office.names")、造型 shared("office.looks")、衣服 shared("office.outfits")，都以分頁為單位。
+// 圖在 art/（2 倍大的 PNG），每一層的位置在 art.js。
+import { View, div, image, svg, PathBuilder } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, spaces, panes, props, run, setAgentOrder, openOverlay, nextCommand, layouts, shared, setShared, hc } from "herdr";
+import { ART3 } from "./art.js";
 
-const ART = "mods/office/";
+const ART = "mods/office/art/";
 const C = {
-  wall: "#F4ECDF", floor: "#EADCC4", rug: "#E3CFAE", rugLine: "#D4BB93",
+  wall: "#F4ECDF", floor: "#EADCC4", floorLine: "#E2D1B4", rug: "#E3CFAE", rugLine: "#D4BB93", skirting: "#C9A57E",
   ink: "#3D3731", muted: "#7A6E62", wood: "#7E5B3E", plate: "#5A4330",
   cream: "#FFF9EE", orange: "#E07B39", green: "#3E9B6A",
 };
-const SEAT_W = 120, SEAT_H = 130, PAD = 12, ZONE_HEAD = 44, GAP = 14, BOSS_W = 250, WALK_MS = 2400;
+// 座位：桌子的長邊朝右下（2:1），同一區的座位沿這個方向斜著排，一排放不下就往下開新的一排。
+const SEAT_W = 104, STEP_X = 78, STEP_Y = 39, ROW_H = 186, LAST_ROW_H = 150, PAD = 16, ZONE_HEAD = 34, GAP = 14, BOSS_W = 250, WALK_MS = 2400;
+const RUG_X = 26;          // 地毯比座位往右多出來的寬度
+const STAND = ART3.stand.frame, GM = ART3.gm, BOSS = ART3.boss.frame;
 // 辦公室比這個窄時（左邊辦公室、右邊工作畫面）：標題分兩行，總經理桌和你的辦公桌並排在下方。
-const NARROW = 900, FRONT_H = 214;
+const NARROW = 900;
 const WORD = { work: "工作中", ask: "要你回答", report: "報告好了", toGM: "交給總經理", rest: "休息中" };
 const GM_NAME = /^(g\.?\s*m\.?|總經理)$/i;
 export const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
-// 沒選過造型的員工從原本這九種裡固定挑一個，加新造型時大家不會突然換臉。
-const DEFAULT_LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
+// 已經有 3D 圖的九種。沒選過造型的員工從這裡固定挑一個；其他十二種做好前不列出來，
+// 已經選了那些的員工先顯示成這九種之一，但不改掉他原本的選擇。
+export const READY_LOOKS = ["short", "long", "bun", "cat", "dog", "rabbit", "bear", "panda", "fox"];
 export const LOOK_NAME = { short: "短髮", long: "長髮", bun: "包頭", curly: "捲髮", bob: "鮑伯頭", ponytail: "馬尾", beard: "大鬍子", glasses: "眼鏡", cap: "棒球帽", cat: "貓", dog: "狗", rabbit: "兔子", bear: "熊", panda: "貓熊", fox: "狐狸", tiger: "老虎", lion: "獅子", koala: "無尾熊", penguin: "企鵝", monkey: "猴子", frog: "青蛙" };
+export const OUTFITS = ["polo", "hoodie", "cardigan"];
 
-// 衣服顏色看是哪家 AI：橘色 Claude、藍色 Codex。
+// 衣服顏色看是哪家 AI：橘色 Claude、藍色 Codex、灰色其他。
 function shirt(a) {
   const app = `${a.app ?? ""} ${a.program?.name ?? ""}`.toLowerCase();
   return app.includes("claude") ? "claude" : app.includes("codex") ? "codex" : "other";
 }
 
+function hash(s) {
+  let h = 0;
+  for (const ch of String(s ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
 // 造型：使用者選過的就用，沒選過的依分頁固定挑一個。
 export function lookOf(tab) {
   const picked = shared("office.looks")?.[tab];
-  if (LOOKS.includes(picked)) return picked;
-  let h = 0;
-  for (const ch of String(tab ?? "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return DEFAULT_LOOKS[h % DEFAULT_LOOKS.length];
+  return LOOKS.includes(picked) ? picked : READY_LOOKS[hash(tab) % READY_LOOKS.length];
+}
+
+// 畫面上顯示的造型：還沒有 3D 圖的先換成九種之一。
+export function shownLook(tab) {
+  const look = lookOf(tab);
+  return READY_LOOKS.includes(look) ? look : READY_LOOKS[hash(tab) % READY_LOOKS.length];
+}
+
+// 衣服：使用者選過的就用，沒選過的依分頁固定挑一套。
+export function outfitOf(tab) {
+  const picked = shared("office.outfits")?.[tab];
+  return OUTFITS.includes(picked) ? picked : OUTFITS[(hash(tab) >>> 3) % OUTFITS.length];
 }
 
 // 總經理：右鍵設定的那位；沒設定就找名稱叫 G.M.／GM／總經理 的分頁。設成 "none" 就是不要總經理。
@@ -54,7 +76,7 @@ export function nameOf(tab) {
 }
 
 export function openLook(tab, name) {
-  openOverlay({ mod: "office-look", kind: "popup", width: 520, height: 372, props: { tab, name } });
+  openOverlay({ mod: "office-look", kind: "popup", width: 520, height: 470, props: { tab, name } });
 }
 
 // 最後一段在問你問題嗎？（AI 用文字問完就停下時，Herdr 只會回報「做完了」）
@@ -78,6 +100,23 @@ function icon(p, size) {
 function pill(text, bg, fg, border) {
   return div().px(9).py(3).rounded(10).bg(bg).border(2).border_color(border)
     .text_size(11.5).font_weight(700).text_color(fg).whitespace_nowrap().child(text);
+}
+
+// 一張圖：r 是 art.js 裡的 [左, 上, 寬, 高]，(x, y) 是它所在框的左上角。
+function pic(file, r, x = 0, y = 0) {
+  return image(`${ART}${file}.png`).absolute().left(x + r[0]).top(y + r[1]).w(r[2]).h(r[3]);
+}
+
+// 地上的多邊形（地毯、地板格線）。點的座標以 (x, y) 為原點。
+function floorShape(path, color, x, y, w, h) {
+  return window.paint_path(path, color).absolute().left(x).top(y).w(w).h(h);
+}
+
+// 一排座位底下的地毯：等角的平行四邊形，長邊沿座位排的方向（右下），短邊往右上。
+function rugPoints(cols) {
+  const u = (cols - 1) * STEP_X + 82, v = 72;
+  const a = [-16, 100];
+  return [a, [a[0] + u, a[1] + u / 2], [a[0] + u + v, a[1] + u / 2 - v / 2], [a[0] + v, a[1] - v / 2]];
 }
 
 export default class Office extends View {
@@ -121,7 +160,7 @@ export default class Office extends View {
   }
 
   hire(space) {
-    openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 672, props: { space } });
+    openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 780, props: { space } });
   }
 
   // 這位員工現在該怎麼表現：work / ask / report / toGM / rest；還沒讀完畫面的先坐著（wait）。
@@ -140,14 +179,21 @@ export default class Office extends View {
     return st === "report" ? "boss" : st === "toGM" ? "gm" : "seat";
   }
 
+  // 坐著的姿勢與表情。
+  pose(a) {
+    const st = this.state(a);
+    const pose = st === "ask" ? "raise" : st === "work" ? "work" : "rest";
+    return { pose, mood: pose === "raise" ? "call" : pose === "rest" ? "sleep" : "smile" };
+  }
+
   narrow() { return this.size.width < NARROW; }
   top() { return this.narrow() ? 100 : 66; }
 
-  // 排座位：一個空間一區，一位員工一張桌子，放不下就換行。
+  // 排座位：一個空間一區，一位員工一個座位，同一區沿右下斜排，放不下就換行。
   plan(list) {
     const W = this.size.width;
     const room = Math.max(SEAT_W + PAD * 2, W - (this.narrow() ? 0 : BOSS_W) - 32);
-    const perRow = Math.max(1, Math.floor((room - PAD * 2) / SEAT_W));
+    const perRow = Math.max(1, Math.floor((room - PAD * 2 - SEAT_W - RUG_X) / STEP_X) + 1);
     const local = spaces().filter((s) => !s.machine);
     const groups = local.map((s) => ({ id: s.id, name: s.name, people: [] }));
     for (const a of list) {
@@ -161,11 +207,14 @@ export default class Office extends View {
       const n = g.people.length;
       const cols = Math.min(n, perRow), rows = Math.ceil(n / perRow);
       // 沒有員工的分區縮成一小塊，只放「＋ 新增員工」。
-      const w = n ? PAD * 2 + cols * SEAT_W : 168, h = n ? ZONE_HEAD + rows * SEAT_H + 6 : 80;
+      const w = n ? PAD * 2 + (cols - 1) * STEP_X + SEAT_W + RUG_X : 168;
+      // 最後一排只要放得下名牌和地毯；前面的排要留空間，不然後一排的頭會擋到前一排的名牌。
+      const h = n ? ZONE_HEAD + (cols - 1) * STEP_Y + (rows - 1) * ROW_H + LAST_ROW_H : 80;
       if (x > 16 && x + w > 16 + room) { x = 16; y += rowH + GAP; rowH = 0; }
-      zones.push({ ...g, x, y, w, h });
+      zones.push({ ...g, x, y, w, h, cols, rows });
       g.people.forEach((a, i) => {
-        seats[a.address] = { x: x + PAD + (i % perRow) * SEAT_W, y: y + ZONE_HEAD + Math.floor(i / perRow) * SEAT_H };
+        const c = i % perRow, r = Math.floor(i / perRow);
+        seats[a.address] = { x: x + PAD + c * STEP_X, y: y + ZONE_HEAD + c * STEP_Y + r * ROW_H };
       });
       x += w + GAP;
       rowH = Math.max(rowH, h);
@@ -173,48 +222,73 @@ export default class Office extends View {
     return { zones, seats };
   }
 
-  // 你的辦公桌前的位置：交差的人在這裡排隊等你，一排四人，後面的往上退。
-  slot(k) {
+  // 你的辦公桌（含大皮椅）的左上角。寬的時候在右下，窄的時候在下方右邊。
+  bossPos() {
     const W = this.size.width, H = this.size.height;
-    const bx = W - BOSS_W + 14, deskTop = H - 118;
-    const rows = this.narrow() ? 2 : Math.max(1, Math.floor((deskTop - 30 - (this.top() + 34)) / 34) + 1);
-    const row = Math.min(Math.floor(k / 4), rows - 1), col = k % 4;
-    return { x: bx + 22 + col * 46 + (row % 2) * 20, y: deskTop - 30 - row * 34 };
+    return this.narrow() ? { x: W - BOSS[0] - 12, y: H - BOSS[1] - 46 } : { x: W - BOSS_W + 20, y: H - BOSS[1] - 70 };
   }
 
-  // 總經理的桌子在右邊上方，你的辦公桌在右下；窄的時候總經理桌放在你的辦公桌左邊。
+  // 交差的人站在你的辦公桌左前方排隊：沿著桌子前緣排，一排四人，後面的往左上退。
+  slot(k) {
+    const b = this.bossPos();
+    const row = Math.min(Math.floor(k / 4), 2), col = k % 4;
+    return this.standAt({ x: b.x + 2 + col * 34 - row * 30, y: b.y + 158 + col * 13 - row * 28 });
+  }
+
+  // 總經理的桌子：寬的時候在右上，窄的時候在下方、你的辦公桌左邊。
   gmDeskPos() {
     const W = this.size.width, H = this.size.height;
-    if (this.narrow()) return { x: Math.max(16, W - BOSS_W - 214), y: H - 92 };
-    return { x: W - BOSS_W + 14, y: this.top() + 58 };
+    if (this.narrow()) return { x: Math.max(16, W - BOSS[0] - 12 - GM.frame[0] - 64), y: H - GM.frame[1] - 66 };
+    return { x: W - BOSS_W + 50, y: Math.min(this.top() + 40, this.bossPos().y - GM.frame[1] - 60) };
   }
 
-  gmSeat() {
-    const d = this.gmDeskPos();
-    return { x: d.x + 90, y: d.y - 56 };
-  }
-
-  // 總經理桌前排隊：站在桌子左半邊後面，一排三人、最多兩排，再多就疊在後排。
+  // 總經理桌前排隊：站在桌子左前方，一排三人、最多兩排，再多就疊在後排。
   gmSlot(k) {
     const d = this.gmDeskPos();
     const row = Math.min(Math.floor(k / 3), 1), col = k % 3;
-    return { x: d.x + 2 + col * 34 + row * 17, y: d.y - 30 - row * 26 };
+    return this.standAt({ x: d.x - 34 + col * 30 - row * 28, y: d.y + 112 + col * 15 - row * 24 });
   }
 
+  // 站著的人：給腳的位置，回傳人像框的左上角。
+  standAt(feet) {
+    return { x: feet.x - STAND[0] / 2, y: feet.y - STAND[1] };
+  }
+
+  // 坐在座位上的人頭上那一格（泡泡的位置，起身時也從這裡走出去）。o 是座位框的左上角。
+  sitAt(o) {
+    return { x: o.x + 40, y: o.y - 2 };
+  }
+
+  // 坐著的人：身體、打字的手、頭。o 是座位框的左上角；桌子要畫在身體和手之間，所以分開回傳。
+  seated(a, o) {
+    const tab = a.tab ?? a.address, color = shirt(a), outfit = outfitOf(tab), look = shownLook(tab);
+    const { pose, mood } = this.pose(a);
+    const S = ART3.seat, neck = S.neck[`${outfit}-${pose}`];
+    return {
+      pose,
+      body: pic(`body-${outfit}-${pose}-${color}`, S.rect[`body-${outfit}-${pose}`], o.x, o.y),
+      hands: pose === "work" ? pic(`hands-${outfit}-${color}`, S.rect[`hands-${outfit}`], o.x, o.y) : null,
+      head: pic(`head-${look}-${mood}`, ART3.head[look], o.x + neck[0], o.y + neck[1]),
+    };
+  }
+
+  // 站著的人（走路、排隊）：身體加微笑的頭。
+  standing(a) {
+    const tab = a.tab ?? a.address, outfit = outfitOf(tab), look = shownLook(tab);
+    const neck = ART3.stand.neck[outfit];
+    return div().relative().w(STAND[0]).h(STAND[1])
+      .child(pic(`body-${outfit}-stand-${shirt(a)}`, ART3.stand.rect[`body-${outfit}`]))
+      .child(pic(`head-${look}-smile`, ART3.head[look], neck[0], neck[1]));
+  }
+
+  // 一位員工：站著的人整個畫在這裡；坐著的人畫在座位裡（seat / gmDesk），這裡只放頭上的泡泡。
   person(a, seat, k, now) {
-    const st = this.state(a), place = this.placeOf(a), color = shirt(a), look = lookOf(a.tab ?? a.address);
+    const st = this.state(a), place = this.placeOf(a);
     const walking = (this.walkUntil[a.address] ?? 0) > now;
     const queued = place !== "seat";
     const standing = queued || walking;
-    const spot = place === "boss" ? this.slot(k) : place === "gm" ? this.gmSlot(k)
-      : standing ? { x: seat.x + 36, y: seat.y + 2 } : { x: seat.x + 20, y: seat.y + 8 };
-    const pose = standing ? "stand" : st === "ask" ? "raise" : st === "work" ? "work" : "rest";
-    const mood = pose === "raise" ? "call" : pose === "rest" ? "sleep" : "smile";
-    const body = div().id(`body-${a.address}`).relative().w(standing ? 48 : 80).h(80)
-      .child(image(`${ART}body-${pose}-${color}.svg`).w(standing ? 48 : 80).h(80))
-      .child(standing
-        ? image(`${ART}head-${look}-${mood}.svg`).absolute().left(6.3).top(-6.5).size(35.4)
-        : image(`${ART}head-${look}-${mood}.svg`).absolute().left(20).top(5).size(40));
+    const spot = place === "boss" ? this.slot(k) : place === "gm" ? this.gmSlot(k) : this.sitAt(seat);
+    const body = standing ? this.standing(a).id(`body-${a.address}`) : div().id(`body-${a.address}`).w(STAND[0]).h(60);
     if (walking) body.loop("top", { from: 0, to: -3, period: 380 });
     let bubble = null;
     // 只有一個人交差時才冒泡泡；人多時看上方的「N 份報告等你看」。
@@ -222,12 +296,14 @@ export default class Office extends View {
     else if (st === "ask") bubble = pill(a.status === "blocked" ? "需要你！" : a === this.gm ? "要你決定" : "有事問你", "#FFF1E4", C.orange, "#F0A46C");
     else if (st === "work" && !walking) bubble = div().w(34).h(20).rounded(10).bg("#FFFFFF").border(2).border_color("#D9CDBB")
       .flex().items_center().justify_center().text_size(13).font_weight(800).text_color(C.muted).frames(["·", "··", "···"], 420);
-    const lift = queued ? 24 : 20;
-    const beside = st === "work" && !standing;
-    const tag = !bubble ? null : beside
-      ? div().id(`tag-${a.address}`).absolute().top(6).left(60).child(bubble)
-      : div().id(`tag-${a.address}`).absolute().top(-lift).left(standing ? -18 : 6).w(standing ? 84 : 68).flex().justify_center().child(bubble);
-    if (tag && st === "ask") tag.loop("top", { from: -20, to: -26, period: 700 });
+    // 坐著時泡泡放在頭旁邊（打字的點點在右邊、舉手問你在左邊），不會蓋到區名；站著時放在頭上。
+    const side = standing ? null : st === "work" ? "right" : st === "ask" ? "left" : null;
+    const tag = !bubble ? null : side === "right"
+      ? div().id(`tag-${a.address}`).absolute().top(6).left(56).child(bubble)
+      : side === "left"
+        ? div().id(`tag-${a.address}`).absolute().top(8).left(-76).w(74).flex().justify_end().child(bubble)
+        : div().id(`tag-${a.address}`).absolute().top(-24).left(STAND[0] / 2 - 42).w(84).flex().justify_center().child(bubble);
+    if (tag && st === "ask") tag.loop("top", side === "left" ? { from: 8, to: 2, period: 700 } : { from: -22, to: -28, period: 700 });
     return div().id(`p-${a.address}`).absolute().left(spot.x).top(spot.y).cursor_pointer()
       .transition("left", { duration: WALK_MS, easing: "ease-in-out" })
       .transition("top", { duration: WALK_MS, easing: "ease-in-out" })
@@ -236,35 +312,46 @@ export default class Office extends View {
       .child(body).when(Boolean(tag), (el) => el.child(tag));
   }
 
-  desk(a, seat) {
-    const empty = !a;
-    const st = a ? this.state(a) : null;
-    const role = empty ? "＋ 新增員工" : a.tab_name || a.program?.name || "員工";
-    const person = empty ? "" : nameOf(a.tab ?? a.address);
-    // 名牌：有名字時上面寫名字、下面小字寫職稱；沒名字就只寫職稱。
-    const plate = person
-      ? v_flex().absolute().left(14).top(39).w(92).h(26).items_center().justify_center().text_color(C.plate)
-        .child(div().max_w(88).text_size(11).font_weight(700).line_height("13px").truncate().child(person))
-        .child(div().max_w(88).text_size(8.5).line_height("10px").text_color(C.muted).truncate().child(role))
-      : div().absolute().left(14).top(39).w(92).h(26).flex().items_center().justify_center()
-        .text_size(11).font_weight(700).text_color(empty ? C.muted : C.plate).truncate().child(role);
-    const el = div().id(`desk-${a?.address ?? seat.space}`).absolute().left(seat.x).top(seat.y + 56).w(SEAT_W).h(70).cursor_pointer()
-      .child(image(`${ART}${empty ? "desk-empty" : st === "rest" ? "desk-mug" : "desk"}.svg`).w(SEAT_W).h(70))
-      .child(plate);
-    if (empty) return el.opacity(0.6).hover((s) => s.opacity(0.9)).on_click(() => this.hire(seat.space));
-    return el.child(div().absolute().left(52).top(6).child(icon(a.program, 16)))
+  // 一個座位：椅子、人（在座位上時）、桌子、打字的手、頭，照這個順序疊；下面是名牌。
+  seat(a, seat) {
+    const S = ART3.seat, tab = a.tab ?? a.address;
+    const here = this.placeOf(a) === "seat" && !((this.walkUntil[a.address] ?? 0) > Date.now());
+    const p = here ? this.seated(a, { x: 0, y: 0 }) : null;
+    const desk = p?.pose === "rest" ? "desk-mug" : "desk";
+    const role = a.tab_name || a.program?.name || "員工";
+    const person = nameOf(tab);
+    const plate = h_flex().absolute().left(-4).top(118).max_w(STEP_X + 4).px(7).py(2).rounded(8).bg(C.cream)
+      .border(1).border_color(C.rugLine).gap(4).items_center().text_color(C.plate)
+      .child(icon(a.program, 12))
+      .when(Boolean(person), (el) => el.child(div().text_size(11).font_weight(700).truncate().child(person)))
+      .child(div().text_size(person ? 9.5 : 11).font_weight(person ? 400 : 700).text_color(person ? C.muted : C.plate).truncate().child(role));
+    return div().id(`desk-${a.address}`).absolute().left(seat.x).top(seat.y).w(SEAT_W).h(120).cursor_pointer()
+      .child(pic("chair", S.rect.chair))
+      .when(Boolean(p), (el) => el.child(p.body))
+      .child(pic(desk, S.rect[desk]))
+      .when(Boolean(p?.hands), (el) => el.child(p.hands))
+      .when(Boolean(p), (el) => el.child(p.head))
+      .child(plate)
       .on_click(() => run("agent.focus", { terminal: a.address }))
       .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openLook(a.tab ?? a.address, a.tab_name); });
   }
 
+  // 總經理的座位：大椅子、人、大桌子，下面是名牌。
   gmDesk(a) {
-    const d = this.gmDeskPos();
+    const d = this.gmDeskPos(), o = { x: GM.origin[0], y: GM.origin[1] };
+    const here = this.placeOf(a) === "seat" && !((this.walkUntil[a.address] ?? 0) > Date.now());
+    const p = here ? this.seated(a, o) : null;
     const name = nameOf(a.tab ?? a.address) || (a.tab_name ?? "").trim();
-    return div().id("gm-desk").absolute().left(d.x).top(d.y).w(200).h(70).cursor_pointer()
-      .child(image(`${ART}gm-desk.svg`).w(200).h(70))
-      .child(div().absolute().left(142).top(6).child(icon(a.program, 16)))
-      .child(div().absolute().left(45).top(42).w(110).h(18).flex().items_center().justify_center()
-        .text_size(11).font_weight(700).text_color(C.plate).truncate().child(!name || GM_NAME.test(name) ? "總經理" : `總經理・${name}`))
+    return div().id("gm-desk").absolute().left(d.x).top(d.y).w(GM.frame[0]).h(GM.frame[1]).cursor_pointer()
+      .child(pic("chair-gm", GM.rect["chair-gm"]))
+      .when(Boolean(p), (el) => el.child(p.body))
+      .child(pic("gm-desk", GM.rect["gm-desk"]))
+      .when(Boolean(p?.hands), (el) => el.child(p.hands))
+      .when(Boolean(p), (el) => el.child(p.head))
+      .child(h_flex().absolute().left(48).top(GM.frame[1] - 4).max_w(GM.frame[0] - 40).px(8).py(2).rounded(8).bg(C.cream)
+        .border(1).border_color(C.rugLine).gap(4).items_center().text_color(C.plate)
+        .child(icon(a.program, 12))
+        .child(div().text_size(11).font_weight(700).truncate().child(!name || GM_NAME.test(name) ? "總經理" : `總經理・${name}`)))
       .on_click(() => run("agent.focus", { terminal: a.address }))
       .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openLook(a.tab ?? a.address, a.tab_name); });
   }
@@ -296,23 +383,54 @@ export default class Office extends View {
   }
 
   boss() {
-    const W = this.size.width, H = this.size.height;
-    const bx = W - BOSS_W + 14, deskTop = H - 118;
-    return div().absolute().left(bx).top(deskTop).w(200).h(96)
-      .child(image(`${ART}boss-desk.svg`).w(200).h(96))
-      .child(div().absolute().left(50).top(58).w(100).h(22).flex().items_center().justify_center()
+    const b = this.bossPos();
+    return div().id("boss-desk").absolute().left(b.x).top(b.y).w(BOSS[0]).h(BOSS[1])
+      .child(pic("boss-desk", [0, 0, BOSS[0], BOSS[1]]))
+      .child(div().absolute().left(104).top(BOSS[1] - 30).px(9).py(2).rounded(8).bg(C.cream).border(1).border_color(C.rugLine)
         .text_size(11.5).font_weight(700).text_color(C.plate).child("你的辦公桌"));
   }
 
   waitingNote(waiting) {
-    const bx = this.size.width - BOSS_W + 14;
-    const at = this.narrow() ? { x: this.gmDeskPos().x, y: this.size.height - 70 } : { x: bx, y: this.top() + 4 };
-    return div().absolute().left(at.x).top(at.y).w(200).flex().justify_center()
+    const b = this.bossPos();
+    return div().absolute().left(b.x).top(b.y - 20).w(BOSS[0]).flex().justify_center()
       .text_size(12).font_weight(waiting ? 700 : 400).text_color(waiting ? C.green : C.muted)
       .child(waiting ? `${waiting} 份報告等你看` : "目前沒有人在等你");
   }
 
-  // 新增員工時選的造型：等新分頁出現後記到它身上。
+  // 地板：淡淡的等角格線（2:1 的菱形）。
+  floor(top) {
+    const W = this.size.width, H = this.size.height, h = H - top, tile = 104;
+    let path = PathBuilder.stroke(1);
+    for (let x = -2 * h; x < W; x += tile) path = path.move_to(x, 0).line_to(x + 2 * h, h);
+    for (let x = 0; x < W + 2 * h; x += tile) path = path.move_to(x, 0).line_to(x - 2 * h, h);
+    return floorShape(path.build(), C.floorLine, 0, top, W, h);
+  }
+
+  // 一區：每排座位底下一塊斜的地毯，左上角寫區名。
+  zone(z) {
+    const rugs = [];
+    for (let r = 0; r < z.rows; r++) {
+      const cols = Math.min(z.cols, z.people.length - r * z.cols);
+      const pts = rugPoints(cols).map(([x, y]) => [x + PAD + 16, y + ZONE_HEAD + r * ROW_H]);
+      const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+      const ox = Math.min(...xs), oy = Math.min(...ys), w = Math.max(...xs) - ox, h = Math.max(...ys) - oy;
+      const local = pts.map(([x, y]) => [x - ox, y - oy]);
+      rugs.push(floorShape(PathBuilder.fill().add_polygon(local).build(), C.rug, ox, oy, w, h));
+      rugs.push(floorShape(PathBuilder.stroke(1.2).add_polygon(local, true).build(), C.rugLine, ox, oy, w, h));
+    }
+    return div().id(`zone-${z.id}`).absolute().left(z.x - 16).top(z.y).w(z.w + 16).h(z.h).cursor_pointer()
+      .on_click(() => run("space.select", { id: z.id }))
+      .children(rugs)
+      .child(h_flex().absolute().left(PAD + 12).top(6).gap(6).items_center()
+        .child(div().text_size(13).font_weight(800).text_color(C.ink).child(z.name))
+        .child(div().text_size(11).text_color(C.muted).child(z.people.length ? `${z.people.length} 人` : "還沒有人")))
+      .when(!z.people.length, (el) => el.child(div().id(`empty-${z.id}`).absolute().left(PAD + 16).top(34).w(z.w - PAD * 2).h(30).rounded(8)
+        .border(1).border_dashed().border_color("#C4A97F").flex().items_center().justify_center()
+        .text_size(12).font_weight(600).text_color(C.muted).cursor_pointer().hover((s) => s.bg("#EFE2CB"))
+        .on_click(() => this.hire(z.id)).child("＋ 新增員工")));
+  }
+
+  // 新增員工時選的造型和衣服：等新分頁出現後記到它身上。
   claimLooks(list) {
     const pending = shared("office.pendingLook");
     if (!pending) return;
@@ -321,6 +439,7 @@ export default class Office extends View {
     const a = list.find((x) => x.space === pending.space && x.tab_name === pending.name && x.tab && !(x.tab in looks));
     if (!a) return;
     setShared("office.looks", { ...looks, [a.tab]: pending.look });
+    if (pending.outfit) setShared("office.outfits", { ...(shared("office.outfits") ?? {}), [a.tab]: pending.outfit });
     if (pending.person) setShared("office.names", { ...(shared("office.names") ?? {}), [a.tab]: pending.person });
     setShared("office.pendingLook", null);
   }
@@ -340,10 +459,10 @@ export default class Office extends View {
       if (a.address in this.placeAt && this.placeAt[a.address] !== place) this.walkUntil[a.address] = now + WALK_MS;
       this.placeAt[a.address] = place;
     }
-    // 總經理不坐在分區裡，坐右上的總經理桌。
+    // 總經理不坐在分區裡，坐總經理桌。
     const staff = list.filter((a) => a !== gm);
     const { zones, seats } = this.plan(staff);
-    if (gm) seats[gm.address] = this.gmSeat();
+    if (gm) { const d = this.gmDeskPos(); seats[gm.address] = { x: d.x + GM.origin[0], y: d.y + GM.origin[1] }; }
     const order = [...(gm ? [gm] : []), ...zones.flatMap((z) => staff.filter((a) => a.space === z.id))];
     setAgentOrder(order.map((a) => a.address));
     const walking = (a) => (this.walkUntil[a.address] ?? 0) > now;
@@ -351,37 +470,24 @@ export default class Office extends View {
     const toGM = order.filter((a) => this.placeOf(a) === "gm");
     const k = (a) => Math.max(0, (this.placeOf(a) === "gm" ? toGM : toBoss).indexOf(a));
     const still = (a) => this.placeOf(a) === "seat" && !walking(a);
-    // 後排先畫，前排的人擋在前面。
-    const atGM = toGM.filter((a) => !walking(a)).reverse();
-    const moving = order.filter((a) => !still(a) && !atGM.includes(a)).sort((a, b) => toBoss.indexOf(b) - toBoss.indexOf(a));
     this.doneCount = toBoss.length;
+    // 站著的人照腳的位置由後往前畫，前面的人擋住後面的人。
+    const up = order.filter((a) => !still(a)).map((a) => ({ a, el: this.person(a, seats[a.address], k(a), now) }));
+    const feetY = (a) => (this.placeOf(a) === "boss" ? this.slot(k(a)) : this.placeOf(a) === "gm" ? this.gmSlot(k(a)) : this.sitAt(seats[a.address])).y;
+    up.sort((x, y) => feetY(x.a) - feetY(y.a));
+    const wallH = this.narrow() ? 86 : 54;
 
     return div().id("office").relative().size_full().overflow_hidden().bg(C.floor)
       .on_size_change((size, cx) => { this.size = size; cx.notify(); })
-      .child(div().absolute().left(0).top(0).right(0).h(this.narrow() ? 86 : 54).bg(C.wall))
-      .child(div().absolute().left(0).top(this.narrow() ? 86 : 54).right(0).h(3).bg("#D9C7A8"))
-      .when(this.narrow(), (el) => el
-        .child(div().absolute().left(0).top(this.size.height - FRONT_H).right(0).h(FRONT_H).bg("#E4D2B4"))
-        .child(div().absolute().left(0).top(this.size.height - FRONT_H).right(0).h(3).bg("#D9C7A8")))
-      .children(zones.map((z) => div().id(`zone-${z.id}`).absolute().left(z.x).top(z.y).w(z.w).h(z.h)
-        .rounded(12).bg(C.rug).border(1).border_color(C.rugLine).cursor_pointer()
-        .on_click(() => run("space.select", { id: z.id }))
-        .child(h_flex().absolute().left(12).top(7).gap(6).items_center()
-          .child(div().text_size(13).font_weight(800).text_color(C.ink).child(z.name))
-          .child(div().text_size(11).text_color(C.muted).child(z.people.length ? `${z.people.length} 人` : "還沒有人")))))
-      .children(staff.filter(still).map((a) => this.person(a, seats[a.address], 0, now)))
-      .children(zones.flatMap((z) => z.people.length
-        ? z.people.map((a) => this.desk(a, seats[a.address]))
-        : [div().id(`empty-${z.id}`).absolute().left(z.x + PAD).top(z.y + 36).w(z.w - PAD * 2).h(30).rounded(8)
-            .border(1).border_dashed().border_color("#C4A97F").flex().items_center().justify_center()
-            .text_size(12).font_weight(600).text_color(C.muted).cursor_pointer().hover((s) => s.bg("#EFE2CB"))
-            .on_click(() => this.hire(z.id)).child("＋ 新增員工")]))
-      .when(Boolean(gm), (el) => el
-        .children(atGM.map((a) => this.person(a, seats[a.address], k(a), now)))
-        .when(still(gm), (el) => el.child(this.person(gm, seats[gm.address], 0, now)))
-        .child(this.gmDesk(gm)))
-      .children(moving.map((a) => this.person(a, seats[a.address], k(a), now)))
+      .child(this.floor(wallH + 4))
+      .child(div().absolute().left(0).top(0).right(0).h(wallH).bg(C.wall))
+      .child(div().absolute().left(0).top(wallH).right(0).h(4).bg(C.skirting))
+      .children(zones.map((z) => this.zone(z)))
+      .children(zones.flatMap((z) => z.people.map((a) => this.seat(a, seats[a.address]))))
+      .when(Boolean(gm), (el) => el.child(this.gmDesk(gm)))
       .child(this.boss())
+      .children(order.filter(still).map((a) => this.person(a, seats[a.address], 0, now)))
+      .children(up.map((x) => x.el))
       .when(!gm, (el) => el.child(this.waitingNote(toBoss.length)))
       .child(this.header(list));
   }
