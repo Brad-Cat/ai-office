@@ -1,4 +1,4 @@
-// 新增員工：填職稱、選 AI、選造型、選坐哪一區，按「請他上工」就開一個新的 AI 分頁。
+// 新增員工：填職稱、取名字、選 AI、選造型、選坐哪一區，按「請他上工」就開一個新的 AI 分頁。
 import { View, div, svg, image } from "gpui-kit";
 import { v_flex, h_flex, InputState, Input } from "gpui-base";
 import { run, props, closeOverlay, theme, spaces, knownAgents, setShared } from "herdr";
@@ -15,9 +15,10 @@ export default class Hire extends View {
     this.loading = true;
     this.look = LOOKS[Math.floor(Math.random() * LOOKS.length)];
     this.title = InputState.new({ value: "" });
+    this.person = InputState.new({ value: "", placeholder: "例如：小美" });
     this.task = InputState.new({ value: "" });
     this.focusOn = "title";
-    for (const [key, input] of [["title", this.title], ["task", this.task]]) {
+    for (const [key, input] of [["title", this.title], ["person", this.person], ["task", this.task]]) {
       input.on("change", (_e, cx) => cx.notify());
       input.on("focus", (_e, cx) => { this.focusOn = key; cx.notify(); });
       input.on("submit", () => this.submit());
@@ -39,7 +40,8 @@ export default class Hire extends View {
     const task = this.task.value().trim();
     closeOverlay(props().overlay);
     // 辦公室畫面等新分頁出現後，把這個造型記到它身上。
-    setShared("office.pendingLook", { space: this.space, name, look: this.look, at: Date.now() });
+    const person = this.person.value().trim();
+    setShared("office.pendingLook", { space: this.space, name, look: this.look, person, at: Date.now() });
     run("tab.new", { space: this.space, name, argv: this.agent.run, ...(task ? { task } : {}) });
   }
 
@@ -66,6 +68,8 @@ export default class Hire extends View {
         .child(div().text_size(11).text_color(t.dim).child("Esc")))
       .child(label("職稱"))
       .child(field("title", this.title))
+      .child(label("名字（可以留空，之後也能在「取名・換造型」改）"))
+      .child(field("person", this.person))
       .child(label("交辦的第一件事（可以留空）"))
       .child(field("task", this.task))
       .child(label("用哪個 AI"))

@@ -3,7 +3,8 @@
 // 有總經理時：員工做完走到總經理桌前排隊，總經理收了（herdr.seen）就回座位；
 // 總經理做完拿報告走到你的辦公桌前，要你決定時在座位上舉手。
 // 沒有總經理時：員工做完直接走到你的辦公桌前，最後在問你問題的就舉手。
-// 點員工打開他的工作畫面（右邊的終端機）；右鍵或工作畫面標頭的「換造型」可以換人物或動物、設總經理。
+// 點員工打開他的工作畫面（右邊的終端機）；右鍵或工作畫面標頭的「取名・換造型」可以取名字、換人物或動物、設總經理。
+// 名字存在 shared("office.names")，以分頁為單位；桌上名牌上面寫名字、下面寫職稱（分頁名稱）。
 import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { agents, spaces, panes, props, run, setAgentOrder, openOverlay, nextCommand, layouts, shared, setShared, hc } from "herdr";
@@ -46,8 +47,14 @@ export function findGM(list) {
   return list.find((a) => a.tab && a.tab === picked) ?? list.find((a) => GM_NAME.test((a.tab_name ?? "").trim())) ?? null;
 }
 
+// 員工的名字（沒取就是空字串）。
+export function nameOf(tab) {
+  const n = shared("office.names")?.[tab];
+  return typeof n === "string" ? n.trim() : "";
+}
+
 export function openLook(tab, name) {
-  openOverlay({ mod: "office-look", kind: "popup", width: 520, height: 300, props: { tab, name } });
+  openOverlay({ mod: "office-look", kind: "popup", width: 520, height: 372, props: { tab, name } });
 }
 
 // 最後一段在問你問題嗎？（AI 用文字問完就停下時，Herdr 只會回報「做完了」）
@@ -114,7 +121,7 @@ export default class Office extends View {
   }
 
   hire(space) {
-    openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 610, props: { space } });
+    openOverlay({ mod: "office-hire", kind: "dialog", width: 520, height: 672, props: { space } });
   }
 
   // 這位員工現在該怎麼表現：work / ask / report / toGM / rest；還沒讀完畫面的先坐著（wait）。
@@ -232,10 +239,18 @@ export default class Office extends View {
   desk(a, seat) {
     const empty = !a;
     const st = a ? this.state(a) : null;
+    const role = empty ? "＋ 新增員工" : a.tab_name || a.program?.name || "員工";
+    const person = empty ? "" : nameOf(a.tab ?? a.address);
+    // 名牌：有名字時上面寫名字、下面小字寫職稱；沒名字就只寫職稱。
+    const plate = person
+      ? v_flex().absolute().left(14).top(39).w(92).h(26).items_center().justify_center().text_color(C.plate)
+        .child(div().max_w(88).text_size(11).font_weight(700).line_height("13px").truncate().child(person))
+        .child(div().max_w(88).text_size(8.5).line_height("10px").text_color(C.muted).truncate().child(role))
+      : div().absolute().left(14).top(39).w(92).h(26).flex().items_center().justify_center()
+        .text_size(11).font_weight(700).text_color(empty ? C.muted : C.plate).truncate().child(role);
     const el = div().id(`desk-${a?.address ?? seat.space}`).absolute().left(seat.x).top(seat.y + 56).w(SEAT_W).h(70).cursor_pointer()
       .child(image(`${ART}${empty ? "desk-empty" : st === "rest" ? "desk-mug" : "desk"}.svg`).w(SEAT_W).h(70))
-      .child(div().absolute().left(22).top(42).w(76).h(18).flex().items_center().justify_center()
-        .text_size(11).font_weight(700).text_color(empty ? C.muted : C.plate).truncate().child(empty ? "＋ 新增員工" : a.tab_name || a.program?.name || "員工"));
+      .child(plate);
     if (empty) return el.opacity(0.6).hover((s) => s.opacity(0.9)).on_click(() => this.hire(seat.space));
     return el.child(div().absolute().left(52).top(6).child(icon(a.program, 16)))
       .on_click(() => run("agent.focus", { terminal: a.address }))
@@ -244,7 +259,7 @@ export default class Office extends View {
 
   gmDesk(a) {
     const d = this.gmDeskPos();
-    const name = (a.tab_name ?? "").trim();
+    const name = nameOf(a.tab ?? a.address) || (a.tab_name ?? "").trim();
     return div().id("gm-desk").absolute().left(d.x).top(d.y).w(200).h(70).cursor_pointer()
       .child(image(`${ART}gm-desk.svg`).w(200).h(70))
       .child(div().absolute().left(142).top(6).child(icon(a.program, 16)))
@@ -306,6 +321,7 @@ export default class Office extends View {
     const a = list.find((x) => x.space === pending.space && x.tab_name === pending.name && x.tab && !(x.tab in looks));
     if (!a) return;
     setShared("office.looks", { ...looks, [a.tab]: pending.look });
+    if (pending.person) setShared("office.names", { ...(shared("office.names") ?? {}), [a.tab]: pending.person });
     setShared("office.pendingLook", null);
   }
 
@@ -373,7 +389,7 @@ export default class Office extends View {
   rail() {
     const s = spaces().find((x) => x.active), tab = s?.tabs.find((t) => t.active);
     return h_flex().size_full().bg(C.wood).px(16).items_center().justify_between().text_color(C.cream).text_size(13).font_weight(600)
-      .child(div().child(`${s?.name ?? ""}　／　${tab?.name ?? ""}`))
+      .child(div().child(`${s?.name ?? ""}　／　${tab?.name ?? ""}${tab && nameOf(tab.id) ? `・${nameOf(tab.id)}` : ""}`))
       .child(div().text_size(11.5).opacity(0.8).child("工作畫面"));
   }
 
@@ -382,12 +398,14 @@ export default class Office extends View {
     const st = pane?.status;
     const word = { working: "工作中", blocked: "需要你", done: "做完了", idle: "休息中" }[st] ?? "";
     const tabName = spaces().flatMap((s) => s.tabs).find((t) => t.id === pane?.tab)?.name;
+    const person = pane?.tab ? nameOf(pane.tab) : "";
     return h_flex().size_full().px(12).gap(8).items_center().bg("#E9DCC6").text_color(C.plate).text_size(12).font_weight(600)
+      .when(Boolean(person), (el) => el.child(div().font_weight(800).child(person)).child(div().text_color(C.muted).child("·")))
       .child(icon(pane?.program, 15)).child(div().child(pane?.program?.name ?? "終端機"))
       .child(div().flex_1())
       .when(Boolean(st && pane?.tab), (el) => el.child(div().id(`look-${id}`).px(8).py(2).rounded(6).border(1).border_color("#CDB896")
         .text_size(11.5).cursor_pointer().hover((s) => s.bg("#F6EEDF"))
-        .on_click(() => openLook(pane.tab, tabName)).child("換造型")))
+        .on_click(() => openLook(pane.tab, tabName)).child("取名・換造型")))
       .child(div().text_color(st === "blocked" ? C.orange : st === "done" ? C.green : C.muted).child(word));
   }
 }

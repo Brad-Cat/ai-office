@@ -1,7 +1,8 @@
-// 換造型：21 種人物和動物，點一下就換；造型存在 shared("office.looks")，以分頁為單位。
+// 取名・換造型：上面填名字（shared("office.names")），下面 21 種人物和動物點一下就換（shared("office.looks")），都以分頁為單位。
+// 名字按 Enter、按「存好」、點造型或離開輸入框時存起來；清空就是不取名。
 // 右上角可以把這位設為總經理（shared("office.gm")），或取消。
 import { View, div, image } from "gpui-kit";
-import { h_flex, v_flex } from "gpui-base";
+import { h_flex, v_flex, InputState, Input } from "gpui-base";
 import { props, closeOverlay, theme, shared, setShared, agents } from "herdr";
 
 const LOOKS = ["short", "long", "bun", "curly", "bob", "ponytail", "beard", "glasses", "cap", "cat", "dog", "rabbit", "bear", "panda", "fox", "tiger", "lion", "koala", "penguin", "monkey", "frog"];
@@ -28,14 +29,31 @@ function current(tab) {
 
 export default class Look extends View {
   init(_p, cx) {
+    const p = props() ?? {};
+    this.tab = p.tab;
+    const name = shared("office.names")?.[p.tab];
+    this.person = InputState.new({ value: typeof name === "string" ? name : "", placeholder: "例如：小美" });
+    this.person.on("submit", () => { this.save(); closeOverlay(p.overlay); });
+    this.person.on("blur", () => this.save());
     this.handle = cx.focus_handle();
-    this.handle.focus();
+    this.person.focus();
+    cx.timer.after(400, () => this.person.focus());
   }
+
+  save() {
+    const v = this.person.value().trim();
+    const names = { ...(shared("office.names") ?? {}) };
+    if ((names[this.tab] ?? "") === v) return;
+    if (v) names[this.tab] = v; else delete names[this.tab];
+    setShared("office.names", names);
+  }
+
   render() {
     const t = theme();
     const p = props() ?? {};
     const now = current(p.tab);
     const pick = (look) => {
+      this.save();
       setShared("office.looks", { ...(shared("office.looks") ?? {}), [p.tab]: look });
       closeOverlay(p.overlay);
     };
@@ -49,11 +67,17 @@ export default class Look extends View {
       .on_key_down((e, cx) => { if (e.key === "escape") { closeOverlay(p.overlay); cx.stop_propagation(); } })
       .w_full().p(14).gap(8).bg(t.popover).text_color(t.foreground)
       .child(h_flex().pb(4).items_center()
-        .child(div().flex_1().text_size(13.5).font_semibold().child(p.name ? `幫「${p.name}」換造型` : "換造型"))
+        .child(div().flex_1().text_size(13.5).font_semibold().child(p.name ? `幫「${p.name}」取名、換造型` : "取名、換造型"))
         .child(div().id("gm-toggle").px(10).py(4).rounded(7).border_1().border_color(t.border).bg(t.raised)
           .text_size(12).cursor_pointer().hover((s) => s.bg(t.hover))
-          .on_click(() => { setShared("office.gm", gmTab() === p.tab ? "none" : p.tab); closeOverlay(p.overlay); })
+          .on_click(() => { this.save(); setShared("office.gm", gmTab() === p.tab ? "none" : p.tab); closeOverlay(p.overlay); })
           .child(gmTab() === p.tab ? "不當總經理" : "設為總經理")))
+      .child(h_flex().gap(8).items_center()
+        .child(div().w(36).text_size(12.5).text_color(t.dim).child("名字"))
+        .child(Input.new(this.person).flex_1().h(34).px(10).rounded(8).border_1().border_color(t.input).bg(t.background).text_size(12.8).text_color(t.foreground))
+        .child(div().id("name-save").px(12).py(7).rounded(8).bg(t.solid).text_color(t.solid_foreground).text_size(12).cursor_pointer()
+          .hover((s) => s.opacity(0.88)).on_click(() => { this.save(); closeOverlay(p.overlay); }).child("存好")))
+      .child(div().pt(4).text_size(12.5).text_color(t.dim).child("造型"))
       .children(rows);
   }
 }
